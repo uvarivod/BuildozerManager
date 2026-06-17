@@ -37,6 +37,8 @@ class ProfileEditorScreen(Screen):
         self.excluded_files_input.text = ", ".join(profile.excluded_files)
         self.patches_input.text = ", ".join(profile.patches)
         self.delete_exclusions_input.text = ", ".join(profile.delete_exclusions)
+        self._cursor_end(self.sourcedir_input)
+        self._cursor_end(self.spec_path_input)
 
     def clear_fields(self):
         self._editing_profile = None
@@ -64,14 +66,13 @@ class ProfileEditorScreen(Screen):
             delete_exclusions=[x.strip() for x in self.delete_exclusions_input.text.split(",") if x.strip()],
         )
 
+    def _cursor_end(self, widget):
+        from kivy.clock import Clock
+        Clock.schedule_once(lambda dt: setattr(widget, 'cursor', (len(widget.text), 0)), 0)
+
     def _browse_sourcedir(self):
-        from kivy.uix.filechooser import FileChooserIconView, FileChooserListView
-        from kivy.uix.popup import Popup
-        from kivy.uix.boxlayout import BoxLayout
-        from kivy.uix.togglebutton import ToggleButton
-        from kivy.uix.label import Label
-        from kivy.uix.button import Button
         from pathlib import Path
+        from src.screens.file_chooser_helper import FileChooserHelper
 
         current = self.sourcedir_input.text.strip()
         if current:
@@ -85,82 +86,83 @@ class ProfileEditorScreen(Screen):
         else:
             initial_path = "."
 
-        from src.services.storage_service import SettingsStore
+        def on_choose_dir(chosen_path):
+            self.sourcedir_input.text = chosen_path
+            self._cursor_end(self.sourcedir_input)
+            spec_candidate = Path(chosen_path) / "buildozer.spec"
+            if spec_candidate.exists():
+                self._prompt_use_spec(str(spec_candidate))
 
-        import os as _os
-        def _dirs_only(folder, filename):
-            return _os.path.isdir(_os.path.join(folder, filename))
+        FileChooserHelper.show_dir_chooser(
+            initial_path=initial_path, on_choose=on_choose_dir
+        )
 
-        saved_view = SettingsStore.load().get("filechooser_view", "icon")
+    def _prompt_use_spec(self, spec_path):
+        from kivy.uix.popup import Popup
+        from kivy.uix.boxlayout import BoxLayout
+        from kivy.uix.label import Label
+        from kivy.uix.button import Button
 
-        icon_view = FileChooserIconView(dirselect=True, path=initial_path, filters=[_dirs_only])
-        list_view = FileChooserListView(dirselect=True, path=initial_path, filters=[_dirs_only])
-
-        display_path = current if current else ""
-        chosen = {"path": display_path}
-
-        label_text = f"Selected: {display_path}" if display_path else "Selected: (none)"
-        path_label = Label(text=label_text, size_hint_y=None, height=28, halign="left")
-        path_label.bind(size=lambda *_: setattr(path_label, "text_size", (path_label.width, None)))
-
-        def update_path_label(instance, selection):
-            if selection:
-                chosen["path"] = selection[0]
-                path_label.text = f"Selected: {selection[0]}"
-
-        icon_view.bind(selection=update_path_label)
-        list_view.bind(selection=update_path_label)
-
-        def confirm(*_):
-            if chosen["path"]:
-                self.sourcedir_input.text = chosen["path"]
-            popup.dismiss()
-
-        def cancel(*_):
-            popup.dismiss()
-
-        view_container = BoxLayout()
-        current_view = saved_view
-        if current_view == "list":
-            view_container.add_widget(list_view)
-        else:
-            view_container.add_widget(icon_view)
-
-        def toggle_view(btn):
-            nonlocal current_view
-            view_container.clear_widgets()
-            if current_view == "icon":
-                view_container.add_widget(list_view)
-                current_view = "list"
-                btn.text = "Icon View"
-            else:
-                view_container.add_widget(icon_view)
-                current_view = "icon"
-                btn.text = "List View"
-            SettingsStore.save({"filechooser_view": current_view})
-
-        is_list = saved_view == "list"
-        toggle_btn = ToggleButton(text="Icon View" if is_list else "List View", size_hint=(None, None), size=(100, 28))
-        toggle_btn.bind(on_release=toggle_view)
-
-        top_bar = BoxLayout(size_hint_y=None, height=32)
-        top_bar.add_widget(path_label)
-        top_bar.add_widget(toggle_btn)
-
-        btn_row = BoxLayout(size_hint_y=None, height=44, spacing=10, padding=[0, 6])
-        btn_row.add_widget(Button(text="Cancel", on_release=cancel))
-        choose_btn = Button(text="Choose", background_color=(0.2, 0.6, 0.2, 1), on_release=confirm)
-        btn_row.add_widget(choose_btn)
-
-        content = BoxLayout(orientation="vertical")
-        content.add_widget(top_bar)
-        content.add_widget(view_container)
+        content = BoxLayout(orientation="vertical", spacing=10, padding=10)
+        content.add_widget(
+            Label(
+                text="We found buildozer.spec in the folder you chose.\nDo you want to use it?"
+            )
+        )
+        btn_row = BoxLayout(size_hint_y=None, height=44, spacing=10)
+        no_btn = Button(text="No")
+        yes_btn = Button(text="Yes", background_color=(0.2, 0.6, 0.2, 1))
+        btn_row.add_widget(no_btn)
+        btn_row.add_widget(yes_btn)
         content.add_widget(btn_row)
 
-        popup = Popup(title="Select Source Directory",
-                     content=content,
-                     size_hint=(0.8, 0.85))
+        popup = Popup(
+            title="buildozer.spec Found",
+            content=content,
+            size_hint=(0.5, 0.3),
+            auto_dismiss=False,
+        )
+
+        def on_yes(*_):
+            self.spec_path_input.text = spec_path
+            self._cursor_end(self.spec_path_input)
+            popup.dismiss()
+
+        def on_no(*_):
+            popup.dismiss()
+
+        yes_btn.bind(on_release=on_yes)
+        no_btn.bind(on_release=on_no)
         popup.open()
+
+    def _browse_spec_path(self):
+        from pathlib import Path
+        from src.screens.file_chooser_helper import FileChooserHelper
+
+        current_spec = self.spec_path_input.text.strip()
+        if current_spec:
+            try:
+                p = Path(current_spec)
+                start_dir = str(p.parent) if not p.is_dir() else str(p)
+            except Exception:
+                start_dir = "."
+        else:
+            sourcedir = self.sourcedir_input.text.strip()
+            start_dir = sourcedir if sourcedir and Path(sourcedir).is_dir() else "."
+
+        def on_choose_file(chosen_path):
+            self.spec_path_input.text = chosen_path
+            self._cursor_end(self.spec_path_input)
+
+        spec_path = self.spec_path_input.text.strip()
+        selected = spec_path if spec_path else None
+
+        FileChooserHelper.show_file_chooser(
+            initial_path=start_dir,
+            target_filename="buildozer.spec",
+            on_choose=on_choose_file,
+            selected_path=selected,
+        )
 
     def _show_error(self, message: str):
         from kivy.uix.popup import Popup

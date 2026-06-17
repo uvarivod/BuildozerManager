@@ -29,6 +29,7 @@
                     id: name_input
                     size_hint_y: None
                     height: 32
+                    multiline: False
                 Label:
                     text: 'Source Directory'
                     size_hint_y: None
@@ -39,6 +40,7 @@
                     height: 32
                     TextInput:
                         id: sourcedir_input
+                        multiline: False
                     Button:
                         text: 'Browse'
                         size_hint_x: None
@@ -48,10 +50,18 @@
                     text: 'buildozer.spec path'
                     size_hint_y: None
                     height: 32
-                TextInput:
-                    id: spec_path_input
+                BoxLayout:
+                    spacing: 4
                     size_hint_y: None
                     height: 32
+                    TextInput:
+                        id: spec_path_input
+                        multiline: False
+                    Button:
+                        text: 'Browse'
+                        size_hint_x: None
+                        width: 80
+                        on_release: root._browse_spec_path()
                 Label:
                     text: 'ADB path'
                     size_hint_y: None
@@ -60,6 +70,7 @@
                     id: adb_path_input
                     size_hint_y: None
                     height: 32
+                    multiline: False
                 Label:
                     text: 'WSL directory'
                     size_hint_y: None
@@ -68,6 +79,7 @@
                     id: wsl_dir_input
                     size_hint_y: None
                     height: 32
+                    multiline: False
                 Label:
                     text: 'WSL distro'
                     size_hint_y: None
