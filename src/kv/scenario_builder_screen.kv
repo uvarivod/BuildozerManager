@@ -1,0 +1,51 @@
+#:kivy 2.3.1
+
+<ScenarioBuilderScreen>:
+    BoxLayout:
+        orientation: 'vertical'
+        padding: 10
+        spacing: 8
+        BoxLayout:
+            size_hint_y: None
+            height: 36
+            spacing: 8
+            Button:
+                text: '< Back'
+                size_hint_x: None
+                width: 80
+                on_release: root.manager.current = 'profiles'
+            TextInput:
+                id: name_input
+                hint_text: 'Scenario name'
+                multiline: False
+            Button:
+                text: 'Save'
+                on_release: root.save_scenario()
+        BoxLayout:
+            size_hint_y: None
+            height: 36
+            spacing: 8
+            Label:
+                text: 'Available:'
+                size_hint_x: None
+                width: 80
+            Spinner:
+                id: action_spinner
+                text: 'Select action'
+                values: ['Clean', 'Build', 'Patch', 'Download', 'Run']
+                on_text: root.add_action(self.text)
+        Label:
+            text: 'Action Sequence:'
+            size_hint_y: None
+            height: 24
+            bold: True
+        RecycleView:
+            id: action_list
+            viewclass: 'Label'
+            RecycleBoxLayout:
+                default_size: None, 36
+                default_size_hint: 1, None
+                size_hint_y: None
+                height: self.minimum_height
+                orientation: 'vertical'
+                spacing: 4

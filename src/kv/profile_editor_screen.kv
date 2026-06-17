@@ -1,0 +1,127 @@
+#:kivy 2.3.1
+
+<ProfileEditorScreen>:
+    name_input: name_input
+    sourcedir_input: sourcedir_input
+    spec_path_input: spec_path_input
+    adb_path_input: adb_path_input
+    wsl_dir_input: wsl_dir_input
+    wsl_distro_input: wsl_distro_input
+    excluded_files_input: excluded_files_input
+    patches_input: patches_input
+    delete_exclusions_input: delete_exclusions_input
+    BoxLayout:
+        orientation: 'vertical'
+        padding: 10
+        spacing: 8
+        ScrollView:
+            GridLayout:
+                cols: 2
+                spacing: 8
+                size_hint_y: None
+                height: self.minimum_height
+                padding: [0, 0, 0, 60]
+                Label:
+                    text: 'Name'
+                    size_hint_y: None
+                    height: 32
+                TextInput:
+                    id: name_input
+                    size_hint_y: None
+                    height: 32
+                    multiline: False
+                Label:
+                    text: 'Source Directory'
+                    size_hint_y: None
+                    height: 32
+                BoxLayout:
+                    spacing: 4
+                    size_hint_y: None
+                    height: 32
+                    TextInput:
+                        id: sourcedir_input
+                        multiline: False
+                    Button:
+                        text: 'Browse'
+                        size_hint_x: None
+                        width: 80
+                        on_release: root._browse_sourcedir()
+                Label:
+                    text: 'buildozer.spec path'
+                    size_hint_y: None
+                    height: 32
+                BoxLayout:
+                    spacing: 4
+                    size_hint_y: None
+                    height: 32
+                    TextInput:
+                        id: spec_path_input
+                        multiline: False
+                    Button:
+                        text: 'Browse'
+                        size_hint_x: None
+                        width: 80
+                        on_release: root._browse_spec_path()
+                Label:
+                    text: 'ADB path'
+                    size_hint_y: None
+                    height: 32
+                TextInput:
+                    id: adb_path_input
+                    size_hint_y: None
+                    height: 32
+                    multiline: False
+                Label:
+                    text: 'WSL directory'
+                    size_hint_y: None
+                    height: 32
+                TextInput:
+                    id: wsl_dir_input
+                    size_hint_y: None
+                    height: 32
+                    multiline: False
+                Label:
+                    text: 'WSL distro'
+                    size_hint_y: None
+                    height: 32
+                TextInput:
+                    id: wsl_distro_input
+                    size_hint_y: None
+                    height: 32
+                Label:
+                    text: 'Excluded files (comma-sep)'
+                    size_hint_y: None
+                    height: 32
+                TextInput:
+                    id: excluded_files_input
+                    size_hint_y: None
+                    height: 32
+                Label:
+                    text: 'Patches (comma-sep)'
+                    size_hint_y: None
+                    height: 32
+                TextInput:
+                    id: patches_input
+                    size_hint_y: None
+                    height: 32
+                Label:
+                    text: 'Delete exclusions (comma-sep)'
+                    size_hint_y: None
+                    height: 32
+                TextInput:
+                    id: delete_exclusions_input
+                    size_hint_y: None
+                    height: 32
+        BoxLayout:
+            size_hint_y: None
+            height: 48
+            spacing: 10
+            padding: [0, 8]
+            Button:
+                text: 'Cancel'
+                on_release: root.cancel()
+            Button:
+                text: 'Save'
+                id: save_btn
+                background_color: 0.2, 0.6, 0.2, 1
+                on_release: root.save()

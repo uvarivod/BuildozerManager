@@ -1,0 +1,53 @@
+# Log Viewer
+
+## Purpose
+
+Display real-time build and action logs with color-coded levels, timestamps, execution duration, save-to-file, and clear functionality.
+
+## Requirements
+
+### Requirement: Log viewer shows real-time output
+The system SHALL display log output in a scrollable text view that auto-scrolls to the newest entry.
+
+#### Scenario: Real-time log streaming
+- **WHEN** a build action is running
+- **THEN** each new log line appears in the log viewer immediately
+- **THEN** the view auto-scrolls to show the latest line
+
+### Requirement: Log entries are color-coded by level
+The system SHALL color log lines: INFO (white/gray), WARN (yellow), ERROR (red), DEBUG (blue), SUCCESS (green).
+
+#### Scenario: Color-coded log display
+- **WHEN** a WARN message is logged
+- **THEN** it appears in yellow text
+- **WHEN** an ERROR message is logged
+- **THEN** it appears in red text
+
+### Requirement: Each log entry has a timestamp
+The system SHALL prepend each log line with `[YYYY-MM-DD HH:MM:SS]` timestamp.
+
+#### Scenario: Timestamped entries
+- **WHEN** a log entry is created
+- **THEN** it is displayed as `[2026-06-17 11:30:00] Starting build...`
+
+### Requirement: Execution duration is shown
+The system SHALL display the elapsed time since the current action/scenario started, updated every second.
+
+#### Scenario: Duration display
+- **WHEN** an action has been running for 2 minutes 30 seconds
+- **THEN** the UI shows "Duration: 00:02:30"
+
+### Requirement: Log can be saved to a file
+The system SHALL allow saving the current session log to a text file.
+
+#### Scenario: Save log to file
+- **WHEN** the user clicks "Save Log"
+- **THEN** a file save dialog opens
+- **THEN** all log entries are written to the chosen file with timestamps
+
+### Requirement: Log viewer can be cleared
+The system SHALL allow clearing the current log display.
+
+#### Scenario: Clear log
+- **WHEN** the user clicks "Clear Log"
+- **THEN** all log entries are removed from the display

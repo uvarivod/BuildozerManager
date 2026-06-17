@@ -1,0 +1,40 @@
+#:kivy 2.3.1
+
+<LogPanel>:
+    log_display: log_label
+    BoxLayout:
+        orientation: 'vertical'
+        spacing: 4
+        BoxLayout:
+            size_hint_y: None
+            height: 36
+            spacing: 8
+            padding: [8, 4]
+            Label:
+                text: 'Duration: ' + root.duration_label
+                size_hint_x: None
+                width: 200
+                halign: 'left'
+            Widget:
+            Button:
+                text: 'Clear'
+                size_hint_x: None
+                width: 80
+                on_release: root.clear_log()
+            Button:
+                text: 'Save Log'
+                size_hint_x: None
+                width: 100
+                on_release: root.save_log()
+        ScrollView:
+            id: log_scroll
+            Label:
+                id: log_label
+                markup: True
+                font_name: 'RobotoMono-Regular'
+                font_size: 11
+                text_size: (log_scroll.width - 16, None)
+                size_hint_y: None
+                height: self.texture_size[1]
+                padding_x: 8
+                padding_y: 4

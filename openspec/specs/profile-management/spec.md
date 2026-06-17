@@ -1,0 +1,70 @@
+# Profile Management
+
+## Purpose
+
+Manage build profiles — create, edit, delete, select active profile, and configure per-profile settings including source directory, WSL paths, exclusion lists, and patches.
+
+## Requirements
+
+### Requirement: User can create a new profile
+The system SHALL provide a "New Profile" button on the Profiles screen. Clicking it navigates to the editor with empty fields, where the user can configure settings before saving.
+
+#### Scenario: Create new profile
+- **WHEN** the user clicks "New Profile"
+- **THEN** an empty profile editor is shown where the user can fill in fields and click Save to create the profile
+
+### Requirement: Profile stores all build settings
+Each profile SHALL store: name, sourcedir, buildozer spec path, adb path, excluded files/folders, WSL working directory, WSL distribution name, patch list, and deletion exclusion list.
+
+#### Scenario: Edit profile settings
+- **WHEN** the user selects a profile and modifies any setting field, or clicks Browse to select a source directory or buildozer.spec via the file chooser
+- **THEN** the change is reflected in the UI immediately and persisted on save
+
+#### Scenario: Browse for source directory
+- **WHEN** the user clicks "Browse" next to the Source Directory field
+- **THEN** a directory chooser dialog opens pre-populated with the current path (if any)
+- **THEN** selecting a directory fills the text input with the chosen path
+- **THEN** if the chosen directory contains `buildozer.spec`, a confirmation popup asks "We found buildozer.spec in the folder you chose. Do you want to use it?"
+- **THEN** if the user clicks "Yes", the buildozer spec path field is populated with the path to that file
+- **THEN** if the user clicks "No", the popup closes with no further action
+
+#### Scenario: Browse for buildozer.spec
+- **WHEN** the user clicks "Browse" next to the buildozer.spec path field
+- **THEN** a file chooser dialog opens filtered to `buildozer.spec` files, pre-populated with the current source directory path (if any)
+- **THEN** selecting `buildozer.spec` fills the text input with its full path
+
+#### Scenario: Auto-detect ADB
+- **WHEN** the user has Android SDK or platform-tools on PATH
+- **THEN** the adb_path field auto-populates with the detected ADB executable location
+
+### Requirement: User can delete a profile
+The system SHALL allow deletion of the currently selected profile with a confirmation prompt.
+
+#### Scenario: Delete current profile
+- **WHEN** the user clicks "Delete" and confirms
+- **THEN** the profile is permanently removed
+
+### Requirement: User can select the active profile
+The system SHALL maintain a single active profile whose settings are used for all actions. The user SHALL select the active profile from a dropdown (Spinner) at the top of the Actions screen.
+
+#### Scenario: Select profile from dropdown
+- **WHEN** the user opens the profile dropdown and clicks a profile name
+- **THEN** that profile becomes active and its settings are used for all actions
+
+### Requirement: Excluded files/folders can be configured per profile
+The system SHALL maintain a list of file/folder patterns excluded when copying source to WSL.
+
+#### Scenario: Add exclusion pattern
+- **WHEN** the user adds a pattern "*.pyc" to the exclusion list
+- **THEN** the pattern is saved and applied during WSL copy
+
+#### Scenario: Remove exclusion pattern
+- **WHEN** the user removes a pattern from the exclusion list
+- **THEN** the pattern is no longer excluded during copy
+
+### Requirement: Deletion exclusion list can be configured per profile
+The system SHALL maintain a list of files/folders in the WSL working directory that are NOT deleted during Clean.
+
+#### Scenario: Add deletion exclusion
+- **WHEN** the user adds ".buildozer" to the deletion exclusion list
+- **THEN** the pattern is saved and applied during Clean operations
