@@ -1,0 +1,109 @@
+#:kivy 2.3.1
+
+<ActionsScreen>:
+    log_panel: log_panel
+    scenario_spinner: scenario_spinner
+    profile_spinner: profile_spinner
+    BoxLayout:
+        orientation: 'vertical'
+        padding: 10
+        spacing: 8
+        BoxLayout:
+            size_hint_y: None
+            height: 36
+            spacing: 6
+            Spinner:
+                id: profile_spinner
+                text: 'Select profile'
+                size_hint_x: None
+                width: 200
+                on_text: root.on_profile_spinner_text(self.text)
+            Button:
+                text: 'Delete'
+                size_hint_x: None
+                width: 60
+                background_color: 0.8, 0.2, 0.2, 1
+                on_release: root.delete_profile()
+            Label:
+                text: ''
+                size_hint_x: 1
+            Button:
+                text: 'Edit Profile'
+                size_hint_x: None
+                width: 100
+                on_release: root.edit_profile()
+            Button:
+                text: 'New Profile'
+                size_hint_x: None
+                width: 100
+                on_release: root.new_profile()
+        Label:
+            text: root.status_label
+            bold: True
+            size_hint_y: None
+            height: 24
+        BoxLayout:
+            orientation: 'horizontal'
+            size_hint_y: None
+            height: 120
+            spacing: 10
+            BoxLayout:
+                orientation: 'vertical'
+                spacing: 6
+                size_hint_x: 0.5
+                Label:
+                    text: 'Actions'
+                    bold: True
+                    size_hint_y: None
+                    height: 24
+                GridLayout:
+                    cols: 2
+                    spacing: 6
+                    Button:
+                        text: 'Clean'
+                        on_release: root.run_single_action('clean')
+                    Button:
+                        text: 'Build'
+                        on_release: root.run_single_action('build')
+                    Button:
+                        text: 'Patch'
+                        on_release: root.run_single_action('patch')
+                    Button:
+                        text: 'Download'
+                        on_release: root.run_single_action('download')
+                    Button:
+                        text: 'Run (ADB)'
+                        on_release: root.run_single_action('run')
+                        size_hint_x: 1
+                    Button:
+                        text: 'Cancel'
+                        background_color: 0.8, 0.2, 0.2, 1
+                        on_release: root.cancel_action()
+            BoxLayout:
+                orientation: 'vertical'
+                spacing: 6
+                size_hint_x: 0.5
+                Label:
+                    text: 'Scenarios'
+                    bold: True
+                    size_hint_y: None
+                    height: 24
+                Spinner:
+                    id: scenario_spinner
+                    text: 'Select scenario'
+                    size_hint_y: None
+                    height: 40
+                Button:
+                    text: 'Run Scenario'
+                    size_hint_y: None
+                    height: 40
+                    background_color: 0.2, 0.6, 0.2, 1
+                    on_release: root.run_scenario()
+                Button:
+                    text: 'Cancel'
+                    size_hint_y: None
+                    height: 30
+                    background_color: 0.8, 0.2, 0.2, 1
+                    on_release: root.cancel_action()
+        LogPanel:
+            id: log_panel

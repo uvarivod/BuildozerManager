@@ -1,0 +1,38 @@
+#:kivy 2.3.1
+
+<MainScreen>:
+    BoxLayout:
+        orientation: 'vertical'
+        ScreenManager:
+            id: sm
+            size_hint_y: 0.9
+            ProfileListScreen:
+                name: 'profiles'
+            ProfileEditorScreen:
+                name: 'editor'
+            ActionsScreen:
+                name: 'actions'
+            ScenarioBuilderScreen:
+                name: 'scenario_builder'
+        BoxLayout:
+            size_hint_y: 0.1
+            orientation: 'horizontal'
+            spacing: 4
+            padding: [8, 4]
+            Button:
+                text: 'Profiles'
+                on_release: sm.current = 'profiles'
+            Button:
+                text: 'Editor'
+                on_release: sm.current = 'editor'
+            Button:
+                text: 'Actions'
+                on_release: sm.current = 'actions'
+            Button:
+                text: 'Scenarios'
+                on_release: sm.current = 'scenario_builder'
+            Label:
+                id: wsl_status
+                text: 'WSL: ?'
+                size_hint_x: None
+                width: 100
