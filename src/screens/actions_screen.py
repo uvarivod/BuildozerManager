@@ -41,8 +41,9 @@ class ActionsScreen(Screen):
         self._active_profile = profile
         if profile:
             self.status_label = f"Ready"
+            self._refresh_profile_spinner()
             self._updating_spinner = True
-            if self.profile_spinner and profile.name in self.profile_spinner.values:
+            if self.profile_spinner:
                 self.profile_spinner.text = profile.name
             self._updating_spinner = False
         else:
@@ -92,25 +93,17 @@ class ActionsScreen(Screen):
     def edit_profile(self):
         if not self._active_profile or not self.manager:
             return
-        self.manager.get_screen("editor").load_profile(self._active_profile)
+        editor = self.manager.get_screen("editor")
+        if hasattr(editor, "load_profile"):
+            editor.load_profile(self._active_profile)
         self.manager.current = "editor"
 
     def new_profile(self):
-        name = "New Profile"
-        existing = [p.name for p in ProfileStore.load_all()]
-        if name in existing:
-            i = 2
-            while f"{name} {i}" in existing:
-                i += 1
-            name = f"{name} {i}"
-        profile = Profile(name=name)
-        ProfileStore.save_all(ProfileStore.load_all() + [profile])
-        self._refresh_profile_spinner()
-        if self.on_profile_selected:
-            self.on_profile_selected(profile)
-        if self.manager:
-            self.manager.get_screen("editor").load_profile(profile)
-            self.manager.current = "editor"
+        if not self.manager:
+            return
+        editor = self.manager.get_screen("editor")
+        editor.clear_fields()
+        self.manager.current = "editor"
 
     def _refresh_scenarios(self):
         self._scenarios = self._scenario_service.get_predefined_scenarios()

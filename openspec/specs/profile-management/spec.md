@@ -7,22 +7,24 @@ Manage build profiles — create, edit, delete, select active profile, and confi
 ## Requirements
 
 ### Requirement: User can create a new profile
-The system SHALL allow the user to create a new build profile with a unique name and default settings.
+The system SHALL provide a "New Profile" button on the Profiles screen. Clicking it navigates to the editor with empty fields, where the user can configure settings before saving.
 
-#### Scenario: Create profile with unique name
-- **WHEN** the user clicks "New Profile" and enters name "MyApp"
-- **THEN** a new profile named "MyApp" is created with default values
-
-#### Scenario: Create profile with duplicate name
-- **WHEN** the user clicks "New Profile" and enters a name that already exists
-- **THEN** the system SHALL show an error message and refuse to create
+#### Scenario: Create new profile
+- **WHEN** the user clicks "New Profile"
+- **THEN** an empty profile editor is shown where the user can fill in fields and click Save to create the profile
 
 ### Requirement: Profile stores all build settings
 Each profile SHALL store: name, sourcedir, buildozer spec path, adb path, excluded files/folders, WSL working directory, WSL distribution name, patch list, and deletion exclusion list.
 
 #### Scenario: Edit profile settings
-- **WHEN** the user selects a profile and modifies any setting field
+- **WHEN** the user selects a profile and modifies any setting field, or clicks Browse to select a source directory via the file chooser
 - **THEN** the change is reflected in the UI immediately and persisted on save
+
+#### Scenario: Browse for source directory
+- **WHEN** the user clicks "Browse" next to the Source Directory field
+- **THEN** a directory chooser dialog opens pre-populated with the current path (if any)
+- **THEN** selecting a directory fills the text input with the chosen path
+- **THEN** auto-detect buildozer.spec fires on the new path
 
 #### Scenario: Auto-detect buildozer.spec
 - **WHEN** the user sets sourcedir to a path containing `buildozer.spec`
@@ -33,21 +35,17 @@ Each profile SHALL store: name, sourcedir, buildozer spec path, adb path, exclud
 - **THEN** the adb_path field auto-populates with the detected ADB executable location
 
 ### Requirement: User can delete a profile
-The system SHALL allow deletion of any profile with a confirmation prompt.
+The system SHALL allow deletion of the currently selected profile with a confirmation prompt.
 
-#### Scenario: Delete profile with confirmation
-- **WHEN** the user clicks "Delete Profile" and confirms
+#### Scenario: Delete current profile
+- **WHEN** the user clicks "Delete" and confirms
 - **THEN** the profile is permanently removed
 
-#### Scenario: Cancel profile deletion
-- **WHEN** the user clicks "Delete Profile" and cancels the confirmation
-- **THEN** the profile is not deleted
-
 ### Requirement: User can select the active profile
-The system SHALL maintain a single active profile whose settings are used for all actions.
+The system SHALL maintain a single active profile whose settings are used for all actions. The user SHALL select the active profile from a dropdown (Spinner) at the top of the Actions screen.
 
 #### Scenario: Select profile from dropdown
-- **WHEN** the user selects a profile from the dropdown on the home page
+- **WHEN** the user opens the profile dropdown and clicks a profile name
 - **THEN** that profile becomes active and its settings are used for all actions
 
 ### Requirement: Excluded files/folders can be configured per profile

@@ -68,7 +68,9 @@ class SettingsStore:
 
     @staticmethod
     def save(settings: dict):
-        _write_json("settings.json", settings)
+        existing = SettingsStore.load()
+        existing.update(settings)
+        _write_json("settings.json", existing)
 
 
 class ScenarioStore:

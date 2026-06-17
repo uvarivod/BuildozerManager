@@ -1,135 +1,115 @@
 #:kivy 2.3.1
 
 <ProfileEditorScreen>:
+    name_input: name_input
+    sourcedir_input: sourcedir_input
+    spec_path_input: spec_path_input
+    adb_path_input: adb_path_input
+    wsl_dir_input: wsl_dir_input
+    wsl_distro_input: wsl_distro_input
+    excluded_files_input: excluded_files_input
+    patches_input: patches_input
+    delete_exclusions_input: delete_exclusions_input
     BoxLayout:
         orientation: 'vertical'
         padding: 10
         spacing: 8
-        BoxLayout:
-            size_hint_y: None
-            height: 36
-            spacing: 8
-            Button:
-                text: '< Back'
-                size_hint_x: None
-                width: 80
-                on_release: root.manager.current = 'actions'
-            Label:
-                text: 'Profile: ' + root.profile_name
-                bold: True
         ScrollView:
-            BoxLayout:
-                orientation: 'vertical'
+            GridLayout:
+                cols: 2
+                spacing: 8
                 size_hint_y: None
                 height: self.minimum_height
-                spacing: 8
-                BoxLayout:
-                    size_hint_y: None
-                    height: 30
-                    spacing: 8
-                    Label:
-                        text: 'Name'
-                        size_hint_x: None
-                        width: 120
-                    TextInput:
-                        text: root.profile_name
-                        on_text: root.profile_name = self.text
-                        multiline: False
-                BoxLayout:
-                    size_hint_y: None
-                    height: 30
-                    spacing: 8
-                    Label:
-                        text: 'Source Dir'
-                        size_hint_x: None
-                        width: 120
-                    TextInput:
-                        text: root.sourcedir
-                        on_text: root.sourcedir = self.text
-                        multiline: False
-                    Button:
-                        text: 'Detect'
-                        size_hint_x: None
-                        width: 60
-                        on_release: root.auto_detect_spec()
-                BoxLayout:
-                    size_hint_y: None
-                    height: 30
-                    spacing: 8
-                    Label:
-                        text: 'Spec Path'
-                        size_hint_x: None
-                        width: 120
-                    TextInput:
-                        text: root.spec_path
-                        on_text: root.spec_path = self.text
-                        multiline: False
-                BoxLayout:
-                    size_hint_y: None
-                    height: 30
-                    spacing: 8
-                    Label:
-                        text: 'ADB Path'
-                        size_hint_x: None
-                        width: 120
-                    TextInput:
-                        text: root.adb_path
-                        on_text: root.adb_path = self.text
-                        multiline: False
-                    Button:
-                        text: 'Auto'
-                        size_hint_x: None
-                        width: 60
-                        on_release: root.auto_detect_adb()
-                BoxLayout:
-                    size_hint_y: None
-                    height: 30
-                    spacing: 8
-                    Label:
-                        text: 'WSL Dir'
-                        size_hint_x: None
-                        width: 120
-                    TextInput:
-                        text: root.wsl_dir
-                        on_text: root.wsl_dir = self.text
-                        multiline: False
-                BoxLayout:
-                    size_hint_y: None
-                    height: 30
-                    spacing: 8
-                    Label:
-                        text: 'WSL Distro'
-                        size_hint_x: None
-                        width: 120
-                    TextInput:
-                        text: root.wsl_distro
-                        on_text: root.wsl_distro = self.text
-                        multiline: False
+                padding: [0, 0, 0, 60]
                 Label:
-                    text: 'Excluded Files (one per line)'
+                    text: 'Name'
                     size_hint_y: None
-                    height: 20
+                    height: 32
                 TextInput:
+                    id: name_input
                     size_hint_y: None
-                    height: 80
-                    text: '\\n'.join(root.excluded_files)
-                    on_text: root.excluded_files = self.text.split('\\n')
+                    height: 32
                 Label:
-                    text: 'Delete Exclusions (one per line)'
+                    text: 'Source Directory'
                     size_hint_y: None
-                    height: 20
-                TextInput:
-                    size_hint_y: None
-                    height: 80
-                    text: '\\n'.join(root.delete_exclusions)
-                    on_text: root.delete_exclusions = self.text.split('\\n')
+                    height: 32
                 BoxLayout:
+                    spacing: 4
                     size_hint_y: None
-                    height: 40
-                    spacing: 8
+                    height: 32
+                    TextInput:
+                        id: sourcedir_input
                     Button:
-                        text: 'Save'
-                        on_release: root.save_profile()
-                    Button:
-                        text: 'Detect Spec'
-                        on_release: root.auto_detect_spec()
+                        text: 'Browse'
+                        size_hint_x: None
+                        width: 80
+                        on_release: root._browse_sourcedir()
+                Label:
+                    text: 'buildozer.spec path'
+                    size_hint_y: None
+                    height: 32
+                TextInput:
+                    id: spec_path_input
+                    size_hint_y: None
+                    height: 32
+                Label:
+                    text: 'ADB path'
+                    size_hint_y: None
+                    height: 32
+                TextInput:
+                    id: adb_path_input
+                    size_hint_y: None
+                    height: 32
+                Label:
+                    text: 'WSL directory'
+                    size_hint_y: None
+                    height: 32
+                TextInput:
+                    id: wsl_dir_input
+                    size_hint_y: None
+                    height: 32
+                Label:
+                    text: 'WSL distro'
+                    size_hint_y: None
+                    height: 32
+                TextInput:
+                    id: wsl_distro_input
+                    size_hint_y: None
+                    height: 32
+                Label:
+                    text: 'Excluded files (comma-sep)'
+                    size_hint_y: None
+                    height: 32
+                TextInput:
+                    id: excluded_files_input
+                    size_hint_y: None
+                    height: 32
+                Label:
+                    text: 'Patches (comma-sep)'
+                    size_hint_y: None
+                    height: 32
+                TextInput:
+                    id: patches_input
+                    size_hint_y: None
+                    height: 32
+                Label:
+                    text: 'Delete exclusions (comma-sep)'
+                    size_hint_y: None
+                    height: 32
+                TextInput:
+                    id: delete_exclusions_input
+                    size_hint_y: None
+                    height: 32
+        BoxLayout:
+            size_hint_y: None
+            height: 48
+            spacing: 10
+            padding: [0, 8]
+            Button:
+                text: 'Cancel'
+                on_release: root.cancel()
+            Button:
+                text: 'Save'
+                id: save_btn
+                background_color: 0.2, 0.6, 0.2, 1
+                on_release: root.save()

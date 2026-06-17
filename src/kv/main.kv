@@ -6,10 +6,6 @@
         ScreenManager:
             id: sm
             size_hint_y: 0.9
-            ProfileListScreen:
-                name: 'profiles'
-            ProfileEditorScreen:
-                name: 'editor'
             ActionsScreen:
                 name: 'actions'
             ScenarioBuilderScreen:
@@ -19,12 +15,6 @@
             orientation: 'horizontal'
             spacing: 4
             padding: [8, 4]
-            Button:
-                text: 'Profiles'
-                on_release: sm.current = 'profiles'
-            Button:
-                text: 'Editor'
-                on_release: sm.current = 'editor'
             Button:
                 text: 'Actions'
                 on_release: sm.current = 'actions'
