@@ -1,3 +1,5 @@
+import subprocess
+
 from kivy.uix.screenmanager import Screen
 from kivy.properties import ObjectProperty, StringProperty
 from kivy.clock import Clock
@@ -162,6 +164,109 @@ class ProfileEditorScreen(Screen):
             target_filename="buildozer.spec",
             on_choose=on_choose_file,
             selected_path=selected,
+        )
+
+    def _browse_adb_path(self):
+        from pathlib import Path
+        from src.screens.file_chooser_helper import FileChooserHelper
+
+        current_adb = self.adb_path_input.text.strip()
+        if current_adb:
+            try:
+                p = Path(current_adb)
+                start_dir = str(p.parent) if not p.is_dir() else str(p)
+            except Exception:
+                start_dir = "."
+        else:
+            start_dir = "."
+
+        def on_choose_file(chosen_path):
+            self.adb_path_input.text = chosen_path
+            self._cursor_end(self.adb_path_input)
+
+        adb_path = self.adb_path_input.text.strip()
+        selected = adb_path if adb_path else None
+
+        FileChooserHelper.show_file_chooser(
+            initial_path=start_dir,
+            target_filename="adb.exe",
+            on_choose=on_choose_file,
+            selected_path=selected,
+        )
+
+    def _check_adb(self):
+        from kivy.uix.popup import Popup
+
+        adb_path = self.adb_path_input.text.strip()
+        if not adb_path:
+            from kivy.uix.label import Label
+            popup = Popup(
+                title="ADB Check",
+                content=Label(text="No ADB path configured."),
+                size_hint=(0.5, 0.3),
+            )
+            popup.open()
+            return
+
+        try:
+            result = subprocess.run(
+                [adb_path, "version"],
+                capture_output=True, text=True, timeout=10
+            )
+            if result.returncode == 0:
+                text = f"ADB is working\n\n{result.stdout.strip()}"
+            else:
+                text = f"ADB error:\n{result.stderr.strip()}"
+        except FileNotFoundError:
+            text = f"ADB not found at:\n{adb_path}"
+        except subprocess.TimeoutExpired:
+            text = "ADB check timed out (10s)."
+        except Exception as e:
+            text = f"Error: {e}"
+
+        from kivy.uix.textinput import TextInput
+        from kivy.uix.boxlayout import BoxLayout
+        content = BoxLayout()
+        text_input = TextInput(
+            text=text,
+            readonly=True,
+            multiline=True,
+            size_hint=(1, 1),
+        )
+        content.add_widget(text_input)
+        popup = Popup(
+            title="ADB Check",
+            content=content,
+            size_hint=(0.6, 0.4),
+        )
+        popup.open()
+
+    def _browse_wsl_dir(self):
+        from pathlib import Path
+        from src.screens.file_chooser_helper import FileChooserHelper
+
+        current = self.wsl_dir_input.text.strip()
+        if current:
+            try:
+                path = Path(current)
+                if not path.is_dir():
+                    path = path.parent
+                initial_path = str(path)
+            except Exception:
+                initial_path = "."
+        else:
+            distro = self.wsl_distro_input.text.strip()
+            if distro:
+                initial_path = f"\\\\wsl.localhost\\{distro}"
+            else:
+                initial_path = "."
+
+        def on_choose_dir(chosen_path):
+            self.wsl_dir_input.text = chosen_path
+            self._cursor_end(self.wsl_dir_input)
+
+        FileChooserHelper.show_dir_chooser(
+            initial_path=initial_path, on_choose=on_choose_dir
         )
 
     def _show_error(self, message: str):

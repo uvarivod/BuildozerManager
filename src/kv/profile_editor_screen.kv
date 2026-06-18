@@ -66,28 +66,23 @@
                     text: 'ADB path'
                     size_hint_y: None
                     height: 32
-                TextInput:
-                    id: adb_path_input
+                BoxLayout:
+                    spacing: 4
                     size_hint_y: None
                     height: 32
-                    multiline: False
-                Label:
-                    text: 'WSL directory'
-                    size_hint_y: None
-                    height: 32
-                TextInput:
-                    id: wsl_dir_input
-                    size_hint_y: None
-                    height: 32
-                    multiline: False
-                Label:
-                    text: 'WSL distro'
-                    size_hint_y: None
-                    height: 32
-                TextInput:
-                    id: wsl_distro_input
-                    size_hint_y: None
-                    height: 32
+                    TextInput:
+                        id: adb_path_input
+                        multiline: False
+                    Button:
+                        text: 'Browse'
+                        size_hint_x: None
+                        width: 80
+                        on_release: root._browse_adb_path()
+                    Button:
+                        text: 'Check'
+                        size_hint_x: None
+                        width: 80
+                        on_release: root._check_adb()
                 Label:
                     text: 'Excluded files (comma-sep)'
                     size_hint_y: None
@@ -96,6 +91,7 @@
                     id: excluded_files_input
                     size_hint_y: None
                     height: 32
+                    multiline: False
                 Label:
                     text: 'Patches (comma-sep)'
                     size_hint_y: None
@@ -104,14 +100,66 @@
                     id: patches_input
                     size_hint_y: None
                     height: 32
+                    multiline: False
+                BoxLayout:
+                    size_hint_y: None
+                    height: 32
+                    canvas.before:
+                        Color:
+                            rgba: 0.15, 0.35, 0.6, 0.15
+                        Rectangle:
+                            size: self.size
+                            pos: self.pos
+                    Label:
+                        text: 'WSL Related Configuration'
+                        bold: True
+                        halign: 'left'
+                        valign: 'middle'
+                        text_size: self.size
+                        padding: [10, 0]
+                BoxLayout:
+                    size_hint_y: None
+                    height: 32
+                    canvas.before:
+                        Color:
+                            rgba: 0.15, 0.35, 0.6, 0.15
+                        Rectangle:
+                            size: self.size
+                            pos: self.pos
                 Label:
-                    text: 'Delete exclusions (comma-sep)'
+                    text: 'WSL Build Directory'
+                    size_hint_y: None
+                    height: 32
+                BoxLayout:
+                    spacing: 4
+                    size_hint_y: None
+                    height: 32
+                    TextInput:
+                        id: wsl_dir_input
+                        multiline: False
+                    Button:
+                        text: 'Browse'
+                        size_hint_x: None
+                        width: 80
+                        on_release: root._browse_wsl_dir()
+                Label:
+                    text: 'WSL Distribution'
+                    size_hint_y: None
+                    height: 32
+                TextInput:
+                    id: wsl_distro_input
+                    size_hint_y: None
+                    height: 32
+                    multiline: False
+                Label:
+                    text: 'Retain During Sync (comma-sep)'
                     size_hint_y: None
                     height: 32
                 TextInput:
                     id: delete_exclusions_input
                     size_hint_y: None
                     height: 32
+                    multiline: False
         BoxLayout:
             size_hint_y: None
             height: 48
