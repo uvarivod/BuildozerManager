@@ -1,22 +1,4 @@
-# WSL Integration
-
-## Purpose
-
-Integrate with Windows Subsystem for Linux to copy source files, execute Buildozer commands, and clean working directories within a configured WSL distribution.
-
-## Requirements
-
-### Requirement: System can copy source files from Windows to WSL
-The system SHALL copy all files from the profile's sourcedir to the WSL working directory, excluding configured patterns.
-
-#### Scenario: Copy source to WSL
-- **WHEN** the user runs Build on a profile with sourcedir "C:\Projects\MyApp"
-- **THEN** the system copies all non-excluded files to the WSL working directory
-- **THEN** the system logs each copied file or a summary count
-
-#### Scenario: Respect exclusion patterns during copy
-- **WHEN** copying with exclusions "*.pyc" and ".git"
-- **THEN** no .pyc files or .git directory are copied
+## ADDED Requirements
 
 ### Requirement: System checks buildozer.spec exists before building
 The system SHALL verify that `buildozer.spec` exists in the WSL build directory before running the buildozer command, and log a clear warning if it is missing.
@@ -30,6 +12,8 @@ The system SHALL verify that `buildozer.spec` exists in the WSL build directory 
 - **WHEN** the Build action checks and `buildozer.spec` is not found in the WSL build directory
 - **THEN** the system logs a warning: "buildozer.spec not found in WSL build directory"
 - **THEN** the build continues (buildozer will report its own error)
+
+## MODIFIED Requirements
 
 ### Requirement: System can execute Buildozer commands in WSL
 The system SHALL run `buildozer` commands inside the configured WSL distribution within the working directory, with the user's local bin PATH exported.
@@ -52,14 +36,5 @@ The system SHALL delete all files and folders inside the WSL working directory, 
 - **THEN** all files in the WSL build directory are deleted except those in the Retain During Sync list
 - **THEN** the system logs the cleaning operation
 
-### Requirement: System reports WSL connectivity status
-The system SHALL check if the configured WSL distribution is running before executing any WSL commands.
-
-#### Scenario: WSL not running
-- **WHEN** WSL is not running and the user starts an action
-- **THEN** the system shows an error message: "WSL distribution '<name>' is not running. Please start it."
-- **THEN** the action is not executed
-
-#### Scenario: WSL is running
-- **WHEN** WSL is running
-- **THEN** the system proceeds with the requested action
+FROM: deleting those in the deletion exclusion list
+TO: deleting those NOT in the Retain During Sync list

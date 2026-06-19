@@ -1,5 +1,6 @@
 import threading
 from collections.abc import Callable
+from datetime import datetime
 from pathlib import Path
 
 from src.models.action import Action, ActionState
@@ -27,8 +28,8 @@ class ActionRunner:
     def _check_cancelled(self) -> bool:
         return self._cancel_event.is_set()
 
-    def _make_log_callback(self, source: str = ""):
-        def cb(level: str, message: str, src: str = ""):
+    def _make_log_callback(self, default_source: str = ""):
+        def cb(level: str, message: str, source: str = "", replace_last: bool = False):
             level_map = {
                 "debug": LogLevel.DEBUG,
                 "info": LogLevel.INFO,
@@ -36,7 +37,7 @@ class ActionRunner:
                 "error": LogLevel.ERROR,
                 "success": LogLevel.SUCCESS,
             }
-            self._log.log(level_map.get(level, LogLevel.INFO), message, source=src or source)
+            self._log.log(level_map.get(level, LogLevel.INFO), message, source=source or default_source, replace_last=replace_last)
         return cb
 
     @staticmethod
@@ -55,9 +56,12 @@ class ActionRunner:
         return missing
 
     def run_action(
-        self, action: Action, profile: Profile
+        self, action: Action, profile: Profile,
+        on_state_change: Callable[[ActionState], None] | None = None,
     ) -> ActionState:
         self.reset_cancel()
+        if on_state_change:
+            on_state_change(ActionState.RUNNING)
         log_cb = self._make_log_callback(action.name.lower())
 
         missing = self.validate_action(action, profile)
@@ -94,13 +98,12 @@ class ActionRunner:
             log_cb("error", "WSL is not running")
             return ActionState.FAILED
 
-        log_cb("info", "Cleaning WSL directory (preserving .buildozer)...")
+        if not self._wsl.find_spec_in_wsl(profile):
+            log_cb("warn", "buildozer.spec not found in WSL build directory")
 
-        original_exclusions = list(profile.delete_exclusions)
-        if ".buildozer" not in profile.delete_exclusions:
-            profile.delete_exclusions.append(".buildozer")
+        log_cb("info", "Cleaning WSL directory...")
+
         clean_ok = self._wsl.clean_wsl_dir(profile, log_cb, self._check_cancelled)
-        profile.delete_exclusions = original_exclusions
 
         if self._check_cancelled():
             return ActionState.CANCELLED

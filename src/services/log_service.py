@@ -38,13 +38,14 @@ class LogEvent:
     level: LogLevel
     message: str
     source: str = ""
+    replace_last: bool = False
 
     def formatted(self) -> str:
         ts = self.timestamp.strftime("%Y-%m-%d %H:%M:%S")
         level_str = LEVEL_NAMES.get(self.level, "INFO")
         color = LEVEL_COLORS.get(self.level, "FFFFFF")
         source_part = f" [{self.source}]" if self.source else ""
-        return f"[b]{ts}[/b] [{color}]{level_str}[/color]{source_part} {self.message}"
+        return f"[b]{ts}[/b] [color=#{color}]{level_str}[/color]{source_part} {self.message}"
 
     def plain_text(self) -> str:
         ts = self.timestamp.strftime("%Y-%m-%d %H:%M:%S")
@@ -73,12 +74,13 @@ class LogService:
         self._listeners: list[Callable[[LogEvent], Any]] = []
         self._lock = threading.Lock()
 
-    def log(self, level: LogLevel, message: str, source: str = ""):
+    def log(self, level: LogLevel, message: str, source: str = "", replace_last: bool = False):
         event = LogEvent(
             timestamp=datetime.now(),
             level=level,
             message=message,
             source=source,
+            replace_last=replace_last,
         )
         with self._lock:
             self._events.append(event)

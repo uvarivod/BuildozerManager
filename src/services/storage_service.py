@@ -54,6 +54,17 @@ class ProfileStore:
         ])
 
     @staticmethod
+    def save(profile: Profile):
+        profiles = ProfileStore.load_all()
+        for i, p in enumerate(profiles):
+            if p.name == profile.name:
+                profiles[i] = profile
+                break
+        else:
+            profiles.append(profile)
+        ProfileStore.save_all(profiles)
+
+    @staticmethod
     def delete(name: str):
         profiles = ProfileStore.load_all()
         profiles = [p for p in profiles if p.name != name]
