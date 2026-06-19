@@ -1,5 +1,5 @@
 from kivy.uix.screenmanager import Screen
-from kivy.properties import ObjectProperty, StringProperty
+from kivy.properties import BooleanProperty, ObjectProperty, StringProperty
 from kivy.clock import Clock
 
 from src.models.action import Action, ActionState
@@ -16,6 +16,7 @@ class ActionsScreen(Screen):
     scenario_spinner = ObjectProperty(None)
     profile_spinner = ObjectProperty(None)
     status_label = StringProperty("Ready")
+    is_running = BooleanProperty(False)
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -110,6 +111,36 @@ class ActionsScreen(Screen):
         if self.scenario_spinner:
             self.scenario_spinner.values = [s.name for s in self._scenarios]
 
+    def _check_buildozer_exclusion(self, on_continue, on_add, on_stop):
+        if ".buildozer" in self._active_profile.delete_exclusions:
+            on_continue()
+            return
+        from kivy.uix.popup import Popup
+        from kivy.uix.label import Label
+        from kivy.uix.boxlayout import BoxLayout
+        from kivy.uix.button import Button
+
+        content = BoxLayout(orientation="vertical", spacing=10, padding=10)
+        content.add_widget(Label(
+            text="'.buildozer' is not in delete exclusions.\n"
+                 "It will be deleted during the clean step.\n"
+                 "This may lose cached build data.",
+            halign="center", valign="middle"
+        ))
+        popup = Popup(title="Warning", content=content, size_hint=(0.6, 0.45))
+        btn_box = BoxLayout(orientation="vertical", spacing=6, size_hint_y=None, height=130)
+        btn_box.add_widget(Button(text="Continue", on_release=lambda *_: (popup.dismiss(), on_continue())))
+        btn_box.add_widget(Button(
+            text="Add to exclusions and continue",
+            on_release=lambda *_: (popup.dismiss(), on_add())
+        ))
+        btn_box.add_widget(Button(
+            text="Stop", background_color=(0.8, 0.2, 0.2, 1),
+            on_release=lambda *_: (popup.dismiss(), on_stop())
+        ))
+        content.add_widget(btn_box)
+        popup.open()
+
     def run_single_action(self, action_name: str):
         if not self._active_profile:
             self._log.warn("No profile selected")
@@ -126,16 +157,36 @@ class ActionsScreen(Screen):
         if not action:
             return
 
-        self._log.info(f"Starting {action.name}...")
-        self.status_label = f"Running: {action.name}"
+        def do_run():
+            self._log.info(f"Starting {action.name}...")
+            self.status_label = f"Running: {action.name}"
+            self.is_running = True
 
-        def run():
-            state = self._runner.run_action(action, self._active_profile)
-            Clock.schedule_once(lambda dt: self._on_action_done(action, state), 0)
+            def on_state_change(state):
+                Clock.schedule_once(lambda dt: self._update_status(state))
 
-        import threading
-        t = threading.Thread(target=run, daemon=True)
-        t.start()
+            self.log_panel.reset_timer()
+
+            def run():
+                state = self._runner.run_action(action, self._active_profile, on_state_change=on_state_change)
+                Clock.schedule_once(lambda dt: self._on_action_done(action, state), 0)
+
+            import threading
+            t = threading.Thread(target=run, daemon=True)
+            t.start()
+
+        if action == Action.BUILD:
+            self._check_buildozer_exclusion(
+                on_continue=do_run,
+                on_add=lambda: (
+                    self._active_profile.delete_exclusions.append(".buildozer")
+                    or ProfileStore.save(self._active_profile)
+                    or do_run()
+                ),
+                on_stop=lambda: self._log.info("Build cancelled by user")
+            )
+        else:
+            do_run()
 
     def run_scenario(self):
         if not self._active_profile:
@@ -166,10 +217,16 @@ class ActionsScreen(Screen):
         self._runner.cancel()
         self._log.warn("Cancelling current operation...")
         self.status_label = "Cancelling..."
+        self.is_running = False
+
+    def _update_status(self, state: ActionState):
+        self.status_label = state.name
 
     def _on_action_done(self, action: Action, state: ActionState):
+        self.log_panel.stop_timer()
         self._log.info(f"{action.name}: {state.name}")
         self.status_label = f"{action.name}: {state.name}"
+        self.is_running = False
 
     def _on_scenario_done(self, run_result):
         status_str = run_result.overall_status.name

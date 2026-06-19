@@ -79,6 +79,7 @@
                     Button:
                         text: 'Cancel'
                         background_color: 0.8, 0.2, 0.2, 1
+                        disabled: not root.is_running
                         on_release: root.cancel_action()
             BoxLayout:
                 orientation: 'vertical'
@@ -105,6 +106,7 @@
                     size_hint_y: None
                     height: 30
                     background_color: 0.8, 0.2, 0.2, 1
+                    disabled: not root.is_running
                     on_release: root.cancel_action()
         LogPanel:
             id: log_panel

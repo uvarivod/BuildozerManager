@@ -2,6 +2,7 @@
 
 <LogPanel>:
     log_display: log_label
+    log_scroll: log_scroll
     BoxLayout:
         orientation: 'vertical'
         spacing: 4
@@ -28,13 +29,19 @@
                 on_release: root.save_log()
         ScrollView:
             id: log_scroll
-            Label:
+            do_scroll_x: False
+            do_scroll_y: True
+            bar_width: 10
+            scroll_type: ['bars', 'content']
+            bar_color: 0.3, 0.6, 0.9, 0.8
+            bar_inactive_color: 0.3, 0.6, 0.9, 0.3
+            TextInput:
                 id: log_label
-                markup: True
+                readonly: True
                 font_name: 'RobotoMono-Regular'
                 font_size: 11
-                text_size: (log_scroll.width - 16, None)
                 size_hint_y: None
-                height: self.texture_size[1]
-                padding_x: 8
-                padding_y: 4
+                height: max(self.minimum_height, log_scroll.height)
+                padding: [8, 4, 8, 4]
+                background_color: 0, 0, 0, 0
+                foreground_color: 0.9, 0.9, 0.9, 1
