@@ -7,7 +7,7 @@ Interact with Android devices via ADB — detect connected devices, install APKs
 ## Requirements
 
 ### Requirement: System can detect connected ADB devices
-The system SHALL run `adb devices` to list connected Android devices and display the status.
+The system SHALL run `adb devices -l` to list connected Android devices, display their status, and log the list when the Run action begins.
 
 #### Scenario: List connected devices
 - **WHEN** the user opens the ADB panel or runs a Run action
@@ -17,6 +17,24 @@ The system SHALL run `adb devices` to list connected Android devices and display
 #### Scenario: No devices connected
 - **WHEN** no devices are connected
 - **THEN** the system shows "No devices connected" message
+
+#### Scenario: Devices logged at start of Run
+- **WHEN** the Run action starts
+- **THEN** the system runs `adb devices -l`
+- **THEN** the system logs each connected device with its serial and state
+- **THEN** the system logs the total device count
+
+### Requirement: User can select a target device when multiple are connected
+When multiple ADB devices are connected, the system SHALL prompt the user to select which device to install and launch onto.
+
+#### Scenario: Device selection popup
+- **WHEN** the Run action detects 2+ connected devices
+- **THEN** a device selection popup lists all connected devices by serial number
+- **THEN** the selected device receives the APK installation and launch commands
+
+#### Scenario: Single device skips selection
+- **WHEN** exactly one device is connected
+- **THEN** the system proceeds without a selection popup
 
 ### Requirement: System can install APK on connected device via ADB
 The system SHALL install the downloaded APK onto the first connected device using `adb install -r`.
@@ -33,12 +51,20 @@ The system SHALL install the downloaded APK onto the first connected device usin
 - **THEN** the action status is set to "Failed"
 
 ### Requirement: System can launch app on device via ADB
-The system SHALL launch the installed app using `adb shell am start -n <package>/<activity>`.
+The system SHALL launch the installed app using the package name from the buildozer.spec. The system SHALL use `adb shell monkey -p <package> 1` when no activity is specified, or `adb shell am start -n <package>/<activity>` when the activity is known. The system SHALL log the full ADB command before execution and the output after.
 
 #### Scenario: Launch app
 - **WHEN** the user runs Run and installation succeeds
 - **THEN** the system runs `adb shell monkey -p <package> 1` or `adb shell am start -n <package>/<activity>`
 - **THEN** the system logs the launch command and output
+
+#### Scenario: Launch app with package name and logging
+- **WHEN** the user runs Run and installation succeeds
+- **THEN** the system reads the package name from the buildozer.spec
+- **THEN** the system logs "Launching <package> on device <serial>..."
+- **THEN** the system logs the full ADB command (e.g., `adb -s <serial> shell monkey -p <package> -c android.intent.category.LAUNCHER 1`)
+- **THEN** the system runs the ADB command
+- **THEN** the system logs the command output
 
 ### Requirement: User can browse for ADB executable path
 The system SHALL provide a Browse button next to the ADB path field that opens a file chooser dialog filtered to `adb.exe`.

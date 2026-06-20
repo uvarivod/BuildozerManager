@@ -151,6 +151,7 @@ class ActionsScreen(Screen):
             "build": Action.BUILD,
             "patch": Action.PATCH,
             "download": Action.DOWNLOAD,
+            "pull_apk": Action.PULL_APK,
             "run": Action.RUN,
         }
         action = action_map.get(action_name.lower())

@@ -1,6 +1,8 @@
+from unittest.mock import MagicMock, patch
+
 import pytest
 
-from src.models.action import Action
+from src.models.action import Action, ActionState
 from src.models.profile import Profile
 from src.services.action_runner import ActionRunner
 
@@ -48,6 +50,22 @@ class TestValidateAction:
         assert "sourcedir" in missing
         assert "wsl_dir" in missing
 
+    def test_pull_apk_requires_sourcedir_and_wsl(self):
+        p = Profile(name="test")
+        missing = ActionRunner.validate_action(Action.PULL_APK, p)
+        assert "sourcedir" in missing
+        assert "wsl_dir" in missing
+
+    def test_pull_apk_valid(self):
+        p = Profile(
+            name="test",
+            sourcedir="/src",
+            wsl_dir="/wsl",
+            wsl_distro="Ubuntu",
+        )
+        missing = ActionRunner.validate_action(Action.PULL_APK, p)
+        assert missing == []
+
     def test_run_requires_adb_path(self):
         p = Profile(
             name="test",
@@ -76,3 +94,124 @@ class TestValidateAction:
         p = Profile(name="test")
         missing = ActionRunner.validate_action(None, p)
         assert missing == []
+
+
+class TestRunAction:
+    @patch("src.services.action_runner.APKService")
+    @patch("src.services.action_runner.ADBService")
+    def test_run_launch_stops_when_no_spec(
+        self, mock_adb_cls, mock_apk_cls
+    ):
+        runner = ActionRunner()
+        profile = Profile(
+            name="test",
+            sourcedir="/src",
+            spec_path="/sp",
+            wsl_dir="/wsl",
+            wsl_distro="Ubuntu",
+            adb_path="adb",
+        )
+        state = runner.run_action(Action.RUN, profile)
+        assert state == ActionState.FAILED
+
+    @patch("src.services.action_runner.APKService")
+    @patch("src.services.action_runner.ADBService")
+    def test_run_launch_stops_when_no_package_name(
+        self, mock_adb_cls, mock_apk_cls
+    ):
+        mock_apk = mock_apk_cls.return_value
+        mock_apk.get_package_name.return_value = ""
+
+        runner = ActionRunner()
+        profile = Profile(
+            name="test",
+            sourcedir="/src",
+            spec_path="/sp",
+            wsl_dir="/wsl",
+            wsl_distro="Ubuntu",
+            adb_path="adb",
+        )
+        state = runner.run_action(Action.RUN, profile)
+        assert state == ActionState.FAILED
+
+    @patch("src.services.action_runner.APKService")
+    @patch("src.services.action_runner.ADBService")
+    def test_run_launch_stops_when_no_devices(
+        self, mock_adb_cls, mock_apk_cls
+    ):
+        mock_apk = mock_apk_cls.return_value
+        mock_apk.get_package_name.return_value = "com.example.app"
+        mock_adb = mock_adb_cls.return_value
+        mock_adb.list_devices.return_value = ([], "")
+
+        runner = ActionRunner()
+        profile = Profile(
+            name="test",
+            sourcedir="/src",
+            spec_path="/sp",
+            wsl_dir="/wsl",
+            wsl_distro="Ubuntu",
+            adb_path="adb",
+        )
+        state = runner.run_action(Action.RUN, profile)
+        assert state == ActionState.FAILED
+
+    @patch("src.services.action_runner.APKService")
+    @patch("src.services.action_runner.ADBService")
+    def test_run_launch_stops_when_adb_not_found(
+        self, mock_adb_cls, mock_apk_cls
+    ):
+        mock_apk = mock_apk_cls.return_value
+        mock_apk.get_package_name.return_value = "com.example.app"
+        mock_adb = mock_adb_cls.return_value
+        mock_adb.list_devices.return_value = ([], "ADB not found at: badpath")
+
+        runner = ActionRunner()
+        profile = Profile(
+            name="test",
+            sourcedir="/src",
+            spec_path="/sp",
+            wsl_dir="/wsl",
+            wsl_distro="Ubuntu",
+            adb_path="badpath",
+        )
+        state = runner.run_action(Action.RUN, profile)
+        assert state == ActionState.FAILED
+
+    @patch("src.services.action_runner.APKService")
+    @patch("src.services.action_runner.ADBService")
+    def test_run_launch_stops_when_no_apk_in_wsl(
+        self, mock_adb_cls, mock_apk_cls
+    ):
+        mock_apk = mock_apk_cls.return_value
+        mock_apk.get_package_name.return_value = "com.example.app"
+        mock_apk.find_latest_apk.return_value = None
+        mock_adb = mock_adb_cls.return_value
+        mock_adb.list_devices.return_value = ([{"serial": "x", "state": "device"}], "")
+
+        runner = ActionRunner()
+        profile = Profile(
+            name="test",
+            sourcedir="/src",
+            spec_path="/sp",
+            wsl_dir="/wsl",
+            wsl_distro="Ubuntu",
+            adb_path="adb",
+        )
+        state = runner.run_action(Action.RUN, profile)
+        assert state == ActionState.FAILED
+
+    @patch("src.services.action_runner.APKService")
+    @patch("src.services.action_runner.ADBService")
+    def test_pull_apk_stops_when_no_spec(
+        self, mock_adb_cls, mock_apk_cls
+    ):
+        runner = ActionRunner()
+        profile = Profile(
+            name="test",
+            sourcedir="/nonexistent",
+            wsl_dir="/wsl",
+            wsl_distro="Ubuntu",
+        )
+        state = runner.run_action(Action.PULL_APK, profile)
+        assert state == ActionState.FAILED

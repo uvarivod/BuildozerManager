@@ -31,7 +31,7 @@ class ScenarioService:
             ),
             Scenario(
                 name="Build and Run",
-                action_sequence=[Action.BUILD, Action.DOWNLOAD, Action.RUN],
+                action_sequence=[Action.BUILD, Action.PULL_APK, Action.RUN],
                 stop_on_failure=True,
             ),
         ]
