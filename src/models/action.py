@@ -6,6 +6,7 @@ class Action(Enum):
     BUILD = auto()
     PATCH = auto()
     DOWNLOAD = auto()
+    PULL_APK = auto()
     RUN = auto()
 
 

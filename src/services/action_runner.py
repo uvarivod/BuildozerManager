@@ -7,6 +7,7 @@ from src.models.action import Action, ActionState
 from src.models.profile import Profile
 from src.services.wsl_service import WSLService
 from src.services.adb_service import ADBService
+from src.services.apk_service import APKService
 from src.services.patch_service import PatchService
 from src.services.log_service import LogService, LogLevel
 
@@ -15,6 +16,7 @@ class ActionRunner:
     def __init__(self):
         self._wsl = WSLService()
         self._adb = ADBService()
+        self._apk = APKService()
         self._patches = PatchService()
         self._log = LogService()
         self._cancel_event = threading.Event()
@@ -47,6 +49,7 @@ class ActionRunner:
             Action.BUILD: ["sourcedir", "spec_path", "wsl_dir", "wsl_distro"],
             Action.PATCH: ["wsl_dir", "wsl_distro"],
             Action.DOWNLOAD: ["sourcedir", "wsl_dir", "wsl_distro"],
+            Action.PULL_APK: ["sourcedir", "wsl_dir", "wsl_distro"],
             Action.RUN: ["sourcedir", "spec_path", "wsl_dir", "wsl_distro", "adb_path"],
         }
         missing = []
@@ -75,8 +78,8 @@ class ActionRunner:
             return self._run_build(profile, log_cb)
         elif action == Action.PATCH:
             return self._run_patch(profile, log_cb)
-        elif action == Action.DOWNLOAD:
-            return self._run_download(profile, log_cb)
+        elif action in (Action.DOWNLOAD, Action.PULL_APK):
+            return self._run_pull_apk(profile, log_cb)
         elif action == Action.RUN:
             return self._run_launch(profile, log_cb)
         return ActionState.FAILED
@@ -143,50 +146,90 @@ class ActionRunner:
             return ActionState.CANCELLED
         return ActionState.SUCCESS if result else ActionState.FAILED
 
-    def _run_download(self, profile: Profile, log_cb) -> ActionState:
-        log_cb("info", "Looking for APK in WSL...")
-        apks = self._wsl.find_apk_in_wsl(profile)
-        if not apks:
-            log_cb("error", "No APK found in WSL .buildozer directory")
+    def _run_pull_apk(self, profile: Profile, log_cb) -> ActionState:
+        spec_path = Path(profile.sourcedir) / "buildozer.spec"
+        if not spec_path.is_file():
+            log_cb("error", f"buildozer.spec not found at {spec_path}")
             return ActionState.FAILED
 
-        latest = apks[0]
-        log_cb("info", f"Found APK: {latest.name}")
+        bin_dir = Path(f"\\\\wsl$\\{profile.wsl_distro}") / profile.wsl_dir.lstrip("/") / "bin"
+        log_cb("info", f"Searching for file under {bin_dir}")
+        latest = self._apk.find_latest_apk(profile)
+        if not latest:
+            log_cb("info", "Missed")
+            if bin_dir.is_dir():
+                files = [p.name for p in sorted(bin_dir.iterdir())]
+                if files:
+                    log_cb("info", "Files in folder: " + ", ".join(files))
+            return ActionState.FAILED
+
+        log_cb("info", f"{latest.name} .. FOUND")
 
         import shutil
         dest = Path(profile.sourcedir) / "bin"
+        dest_path = dest / latest.name
+        replaced = dest_path.exists()
         try:
             dest.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(latest, dest / latest.name)
-            log_cb("success", f"APK copied to {dest / latest.name}")
+            shutil.copy2(latest, dest_path)
+            msg = "Replaced with new" if replaced else "SUCCESS"
+            log_cb("success", f"Copying to {dest_path} .. {msg}")
             return ActionState.SUCCESS
         except Exception as e:
-            log_cb("error", f"Failed to copy APK: {e}")
+            log_cb("error", f"Copying to {dest_path} .. FAILED ({e})")
             return ActionState.FAILED
 
     def _run_launch(self, profile: Profile, log_cb) -> ActionState:
         log_cb("info", "Starting Run action...")
-        devices = self._adb.list_devices(profile.adb_path)
+
+        spec_path = Path(profile.sourcedir) / "buildozer.spec"
+        if not spec_path.is_file():
+            log_cb("error", f"buildozer.spec not found at {spec_path} — cannot determine package name")
+            return ActionState.FAILED
+
+        package_name = self._apk.get_package_name(profile)
+        if not package_name:
+            log_cb("error", "Could not determine package name from buildozer.spec")
+            return ActionState.FAILED
+        log_cb("info", f"Package name: {package_name}")
+
+        log_cb("info", f"Checking connected ADB devices using: {profile.adb_path}")
+        devices, err = self._adb.list_devices(profile.adb_path, log_cb)
+        if err:
+            log_cb("error", err)
+            return ActionState.FAILED
         if not devices:
             log_cb("error", "No ADB devices connected")
             return ActionState.FAILED
 
-        apks = self._wsl.find_apk_in_wsl(profile)
-        if not apks:
-            log_cb("error", "No APK found. Build first.")
+        log_cb("info", f"Found {len(devices)} device(s):")
+        for d in devices:
+            log_cb("info", f"  {d['serial']} ({d['state']})")
+
+        device_serial = devices[0]["serial"]
+        if len(devices) > 1:
+            log_cb("info", f"Multiple devices detected — using first: {device_serial}")
+        else:
+            log_cb("info", f"Using device: {device_serial}")
+
+        latest = self._apk.find_latest_apk(profile)
+        if not latest:
+            log_cb("error", "No matching APK found in WSL. Build or pull APK first.")
             return ActionState.FAILED
 
-        latest = apks[0]
         dest_path = str(Path(profile.sourcedir) / "bin" / latest.name)
         if not Path(dest_path).exists():
-            dl_result = self._run_download(profile, log_cb)
+            log_cb("info", f"APK not found locally, pulling from WSL first...")
+            dl_result = self._run_pull_apk(profile, log_cb)
             if dl_result != ActionState.SUCCESS:
                 return dl_result
 
-        install_ok = self._adb.install_apk(profile.adb_path, dest_path, log_cb)
+        log_cb("info", f"Installing APK from: {dest_path}")
+        install_ok = self._adb.install_apk(profile.adb_path, dest_path, log_cb, device_serial=device_serial)
         if not install_ok:
             return ActionState.FAILED
 
-        launch_ok = self._adb.launch_app(profile.adb_path, "", log_callback=log_cb)
+        log_cb("info", f"Launching {package_name} on device {device_serial}...")
+        launch_ok = self._adb.launch_app(profile.adb_path, package_name, log_callback=log_cb, device_serial=device_serial)
         log_cb("success" if launch_ok else "error", "Launch finished")
         return ActionState.SUCCESS if launch_ok else ActionState.FAILED
