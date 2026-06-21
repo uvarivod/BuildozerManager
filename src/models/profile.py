@@ -12,4 +12,4 @@ class Profile:
     wsl_dir: str = ""
     wsl_distro: str = "Ubuntu-22.04"
     patches: list[str] = field(default_factory=list)
-    delete_exclusions: list[str] = field(default_factory=lambda: [".buildozer"])
+    delete_exclusions: list[str] = field(default_factory=list)

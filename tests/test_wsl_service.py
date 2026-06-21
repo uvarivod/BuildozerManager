@@ -1,3 +1,6 @@
+import shutil
+from pathlib import Path
+
 import pytest
 
 from src.services.wsl_service import WSLService
@@ -152,11 +155,133 @@ class TestNoiseFiltering:
         assert not service._GCC_CONT_RE.match("[INFO]")
 
 
-def simple_profile(wsl_dir="/home/user", wsl_distro="Ubuntu"):
+def simple_profile(wsl_dir="/home/user", wsl_distro="Ubuntu", **kwargs):
     from src.models.profile import Profile
     return Profile(
         name="simple",
         sourcedir="/src",
         wsl_dir=wsl_dir,
         wsl_distro=wsl_distro,
+        **kwargs,
     )
+
+
+def _make_fake_wsl_delete(tmp_path):
+    """Return a _wsl_delete mock that deletes files locally from tmp_path."""
+    def fake(profile, linux_path):
+        name = Path(linux_path).name
+        target = tmp_path / name
+        if target.is_dir():
+            shutil.rmtree(target)
+        elif target.exists():
+            target.unlink()
+        return True
+    return fake
+
+
+class TestDeleteWslContents:
+    def test_no_directory_returns_true(self, service, mock_log_callback):
+        result = service._delete_wsl_contents(
+            simple_profile(), log_callback=mock_log_callback
+        )
+        assert result is True
+
+    def test_deletes_non_excluded_files(self, service, monkeypatch, tmp_path):
+        (tmp_path / "main.py").write_text("x")
+        (tmp_path / ".buildozer").mkdir()
+        (tmp_path / ".buildozer" / "cache").write_text("x")
+        monkeypatch.setattr(service, "_wsl_path", lambda p: tmp_path)
+        monkeypatch.setattr(service, "_wsl_delete", _make_fake_wsl_delete(tmp_path))
+
+        service._delete_wsl_contents(simple_profile(), exclude={".buildozer"})
+
+        assert (tmp_path / ".buildozer").exists()
+        assert not (tmp_path / "main.py").exists()
+
+    def test_excluded_files_skipped(self, service, monkeypatch, tmp_path):
+        (tmp_path / "keep_me").write_text("x")
+        (tmp_path / "delete_me").write_text("x")
+        monkeypatch.setattr(service, "_wsl_path", lambda p: tmp_path)
+        monkeypatch.setattr(service, "_wsl_delete", _make_fake_wsl_delete(tmp_path))
+
+        service._delete_wsl_contents(simple_profile(), exclude={"keep_me"})
+
+        assert (tmp_path / "keep_me").exists()
+        assert not (tmp_path / "delete_me").exists()
+
+    def test_cancel_stops_deletion(self, service, monkeypatch, tmp_path):
+        for i in range(5):
+            (tmp_path / f"file{i}").write_text("x")
+        monkeypatch.setattr(service, "_wsl_path", lambda p: tmp_path)
+        monkeypatch.setattr(service, "_wsl_delete", lambda p, lp: True)
+
+        called = {"count": 0}
+        def cancel_check():
+            called["count"] += 1
+            return called["count"] > 2
+
+        result = service._delete_wsl_contents(
+            simple_profile(), cancel_check=cancel_check
+        )
+        assert result is False
+
+
+class TestSyncSrc:
+    def test_merges_buildozer_and_user_exclusions(self, service, monkeypatch, tmp_path):
+        (tmp_path / ".buildozer").mkdir()
+        (tmp_path / "user_cache").mkdir()
+        (tmp_path / "main.py").write_text("x")
+        monkeypatch.setattr(service, "_wsl_path", lambda p: tmp_path)
+        monkeypatch.setattr(service, "_wsl_delete", _make_fake_wsl_delete(tmp_path))
+        monkeypatch.setattr(service, "copy_source_to_wsl", lambda *a, **kw: True)
+        profile = simple_profile(delete_exclusions=["user_cache"])
+
+        result = service.sync_src(profile)
+
+        assert result is True
+        assert (tmp_path / ".buildozer").exists()
+        assert (tmp_path / "user_cache").exists()
+        assert not (tmp_path / "main.py").exists()
+
+    def test_calls_copy_source_after_deletion(self, service, monkeypatch, tmp_path):
+        monkeypatch.setattr(service, "_wsl_path", lambda p: tmp_path)
+        monkeypatch.setattr(service, "_wsl_delete", lambda p, lp: True)
+        copy_called = False
+        def fake_copy(*a, **kw):
+            nonlocal copy_called
+            copy_called = True
+            return True
+        monkeypatch.setattr(service, "copy_source_to_wsl", fake_copy)
+
+        service.sync_src(simple_profile())
+
+        assert copy_called is True
+
+    def test_returns_false_when_delete_fails(self, service, monkeypatch, tmp_path):
+        (tmp_path / "some_file").write_text("x")
+        monkeypatch.setattr(service, "_wsl_path", lambda p: tmp_path)
+        monkeypatch.setattr(service, "_wsl_delete", lambda p, lp: False)
+
+        result = service.sync_src(simple_profile())
+
+        assert result is False
+
+
+class TestCleanWslProject:
+    def test_deletes_everything_including_buildozer(self, service, monkeypatch, tmp_path):
+        (tmp_path / ".buildozer").mkdir()
+        (tmp_path / "main.py").write_text("x")
+        monkeypatch.setattr(service, "_wsl_path", lambda p: tmp_path)
+        monkeypatch.setattr(service, "_wsl_delete", _make_fake_wsl_delete(tmp_path))
+
+        result = service.clean_wsl_project(simple_profile())
+
+        assert result is True
+        assert not (tmp_path / ".buildozer").exists()
+        assert not (tmp_path / "main.py").exists()
+
+    def test_no_directory_returns_true(self, service, mock_log_callback):
+        result = service.clean_wsl_project(
+            simple_profile(), log_callback=mock_log_callback
+        )
+        assert result is True

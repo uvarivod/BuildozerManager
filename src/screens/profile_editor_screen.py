@@ -53,7 +53,7 @@ class ProfileEditorScreen(Screen):
         self.wsl_distro_input.text = "Ubuntu-22.04"
         self.excluded_files_input.text = ""
         self.patches_input.text = ""
-        self.delete_exclusions_input.text = ".buildozer"
+        self.delete_exclusions_input.text = ""
 
     def _build_profile(self, name: str) -> Profile:
         return Profile(

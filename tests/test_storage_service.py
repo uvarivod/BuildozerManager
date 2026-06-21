@@ -19,14 +19,14 @@ class TestProfileStore:
         assert profiles == []
 
     def test_save_and_load(self, temp_data_dir):
-        p = Profile(name="p1", sourcedir="/src", delete_exclusions=[".buildozer"])
+        p = Profile(name="p1", sourcedir="/src", delete_exclusions=["custom_cache"])
         storage_service.ProfileStore.save_all([p])
 
         loaded = storage_service.ProfileStore.load_all()
         assert len(loaded) == 1
         assert loaded[0].name == "p1"
         assert loaded[0].sourcedir == "/src"
-        assert loaded[0].delete_exclusions == [".buildozer"]
+        assert loaded[0].delete_exclusions == ["custom_cache"]
 
     def test_save_multiple(self, temp_data_dir):
         p1 = Profile(name="a")
@@ -87,7 +87,7 @@ class TestProfileStore:
             wsl_dir="/wsl",
             wsl_distro="Ubuntu",
             patches=["fix"],
-            delete_exclusions=[".buildozer"],
+            delete_exclusions=["custom_cache"],
         )
         storage_service.ProfileStore.save_all([p])
 
@@ -99,7 +99,7 @@ class TestProfileStore:
         assert entry["name"] == "full"
         assert entry["sourcedir"] == "/src"
         assert entry["excluded_files"] == ["*.pyc"]
-        assert entry["delete_exclusions"] == [".buildozer"]
+        assert entry["delete_exclusions"] == ["custom_cache"]
         assert entry["patches"] == ["fix"]
 
 

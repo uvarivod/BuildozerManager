@@ -4,6 +4,7 @@ from pathlib import Path
 from src.models.action import Action
 from src.models.profile import Profile
 
+_PROFILE_FIELDS = {"name", "sourcedir", "spec_path", "adb_path", "excluded_files", "wsl_dir", "wsl_distro", "patches", "delete_exclusions"}
 
 DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data"
 
@@ -33,7 +34,10 @@ class ProfileStore:
     def load_all() -> list[Profile]:
         data = _read_json("profiles.json")
         if isinstance(data, list):
-            return [Profile(**item) for item in data]
+            return [
+                Profile(**{k: v for k, v in item.items() if k in _PROFILE_FIELDS})
+                for item in data
+            ]
         return []
 
     @staticmethod

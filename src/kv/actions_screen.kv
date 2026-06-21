@@ -61,6 +61,9 @@
                     cols: 2
                     spacing: 6
                     Button:
+                        text: 'Sync SRC'
+                        on_release: root.run_single_action('sync_src')
+                    Button:
                         text: 'Clean'
                         on_release: root.run_single_action('clean')
                     Button:

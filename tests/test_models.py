@@ -18,7 +18,7 @@ class TestProfile:
         assert p.wsl_dir == ""
         assert p.wsl_distro == "Ubuntu-22.04"
         assert p.patches == []
-        assert p.delete_exclusions == [".buildozer"]
+        assert p.delete_exclusions == []
 
     def test_custom_values(self):
         p = Profile(
@@ -27,14 +27,14 @@ class TestProfile:
             excluded_files=["*.log"],
             wsl_distro="Debian",
             patches=["fix"],
-            delete_exclusions=[],
+            delete_exclusions=["node_modules"],
         )
         assert p.name == "custom"
         assert p.sourcedir == "/src"
         assert p.excluded_files == ["*.log"]
         assert p.wsl_distro == "Debian"
         assert p.patches == ["fix"]
-        assert p.delete_exclusions == []
+        assert p.delete_exclusions == ["node_modules"]
 
     def test_delete_exclusions_mutable_default(self):
         p1 = Profile(name="a")
@@ -44,6 +44,7 @@ class TestProfile:
 
 class TestAction:
     def test_values(self):
+        assert Action.SYNC_SRC.name == "SYNC_SRC"
         assert Action.CLEAN.name == "CLEAN"
         assert Action.BUILD.name == "BUILD"
         assert Action.PATCH.name == "PATCH"

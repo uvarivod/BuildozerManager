@@ -44,13 +44,20 @@ The system SHALL run `buildozer` commands inside the configured WSL distribution
 - **WHEN** the profile has WSL distribution "Ubuntu-22.04"
 - **THEN** the system uses `wsl.exe --distribution Ubuntu-22.04` for all WSL commands
 
-### Requirement: System can clean the WSL working directory
-The system SHALL delete all files and folders inside the WSL working directory, respecting the Retain During Sync list.
+### Requirement: WSLService provides sync_src method
+The system SHALL provide a `sync_src()` method on WSLService that deletes all files in the WSL project directory except `.buildozer` (hardcoded) and the profile's Retain During Sync items, then copies source files from the local sourcedir.
 
-#### Scenario: Clean WSL directory with Retain During Sync
-- **WHEN** the user runs Clean or the clean phase of Build
-- **THEN** all files in the WSL build directory are deleted except those in the Retain During Sync list
-- **THEN** the system logs the cleaning operation
+#### Scenario: SyncSRC preserves .buildozer and user exclusions
+- **WHEN** `sync_src()` is called with a valid profile
+- **THEN** the WSL project directory is cleared of all files except `.buildozer` and items in the profile's Retain During Sync list
+- **THEN** source files from `profile.sourcedir` are copied to the WSL project directory
+
+### Requirement: WSLService provides clean_wsl_project method
+The system SHALL provide a `clean_wsl_project()` method on WSLService that deletes ALL files in the WSL project directory including `.buildozer`, ignoring all exclusions.
+
+#### Scenario: CleanWSLProject removes everything
+- **WHEN** `clean_wsl_project()` is called with a valid profile
+- **THEN** all files in the WSL project directory including `.buildozer` are deleted
 
 ### Requirement: System reports WSL connectivity status
 The system SHALL check if the configured WSL distribution is running before executing any WSL commands.

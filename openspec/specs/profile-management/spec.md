@@ -80,8 +80,8 @@ The system SHALL maintain a list of file/folder patterns excluded when copying s
 - **THEN** the pattern is no longer excluded during copy
 
 ### Requirement: Retain During Sync list can be configured per profile
-The system SHALL maintain a list of files/folders in the WSL Build Directory that are NOT deleted when syncing updated source before copying new source.
+The system SHALL maintain a list of files/folders in the WSL Build Directory that are preserved during the Sync SRC operation. The `.buildozer` directory is always preserved regardless of this list.
 
 #### Scenario: Add Retain During Sync entry
-- **WHEN** the user adds ".buildozer" to the Retain During Sync list
-- **THEN** the pattern is saved and applied during source sync operations
+- **WHEN** the user adds "custom_cache" to the Retain During Sync list
+- **THEN** the pattern is saved and applied during source sync operations — the file is not deleted when Sync SRC runs
