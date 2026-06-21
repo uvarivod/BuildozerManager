@@ -15,8 +15,8 @@ class ScenarioService:
     def get_predefined_scenarios(self) -> list[Scenario]:
         return [
             Scenario(
-                name="Build and Patch",
-                action_sequence=[Action.BUILD, Action.PATCH],
+                name="Build",
+                action_sequence=[Action.BUILD],
                 stop_on_failure=True,
             ),
             Scenario(

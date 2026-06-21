@@ -107,11 +107,12 @@ class WSLService:
         except Exception:
             return False
 
-    def clean_wsl_dir(
+    def _delete_wsl_contents(
         self, profile: Profile,
+        exclude: set | None = None,
         log_callback=None,
-        cancel_check=None
-    ):
+        cancel_check=None,
+    ) -> bool:
         wsl_path = self._wsl_path(profile)
         if not wsl_path.is_dir():
             if log_callback:
@@ -119,14 +120,14 @@ class WSLService:
             return True
 
         linux_dir = self._linux_dir(profile)
-        exclusions = set(profile.delete_exclusions)
+        exclude = exclude or set()
         deleted = 0
         for item in wsl_path.iterdir():
             if cancel_check and cancel_check():
                 if log_callback:
                     log_callback("warn", "Clean cancelled")
                 return False
-            if item.name in exclusions:
+            if item.name in exclude:
                 if log_callback:
                     log_callback("debug", f"Skipping: {item.name}")
                 continue
@@ -147,6 +148,24 @@ class WSLService:
         if log_callback:
             log_callback("info", f"Cleaned {deleted} items from WSL directory")
         return True
+
+    def sync_src(
+        self, profile: Profile,
+        log_callback=None,
+        cancel_check=None,
+    ) -> bool:
+        exclude = {".buildozer"} | set(profile.delete_exclusions)
+        ok = self._delete_wsl_contents(profile, exclude=exclude, log_callback=log_callback, cancel_check=cancel_check)
+        if not ok:
+            return False
+        return self.copy_source_to_wsl(profile, log_callback=log_callback, cancel_check=cancel_check)
+
+    def clean_wsl_project(
+        self, profile: Profile,
+        log_callback=None,
+        cancel_check=None,
+    ) -> bool:
+        return self._delete_wsl_contents(profile, log_callback=log_callback, cancel_check=cancel_check)
 
     _ANSI_RE = re.compile(r'\x1B\[[0-?]*[ -/]*[@-~]')
 

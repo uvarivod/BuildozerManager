@@ -111,42 +111,13 @@ class ActionsScreen(Screen):
         if self.scenario_spinner:
             self.scenario_spinner.values = [s.name for s in self._scenarios]
 
-    def _check_buildozer_exclusion(self, on_continue, on_add, on_stop):
-        if ".buildozer" in self._active_profile.delete_exclusions:
-            on_continue()
-            return
-        from kivy.uix.popup import Popup
-        from kivy.uix.label import Label
-        from kivy.uix.boxlayout import BoxLayout
-        from kivy.uix.button import Button
-
-        content = BoxLayout(orientation="vertical", spacing=10, padding=10)
-        content.add_widget(Label(
-            text="'.buildozer' is not in delete exclusions.\n"
-                 "It will be deleted during the clean step.\n"
-                 "This may lose cached build data.",
-            halign="center", valign="middle"
-        ))
-        popup = Popup(title="Warning", content=content, size_hint=(0.6, 0.45))
-        btn_box = BoxLayout(orientation="vertical", spacing=6, size_hint_y=None, height=130)
-        btn_box.add_widget(Button(text="Continue", on_release=lambda *_: (popup.dismiss(), on_continue())))
-        btn_box.add_widget(Button(
-            text="Add to exclusions and continue",
-            on_release=lambda *_: (popup.dismiss(), on_add())
-        ))
-        btn_box.add_widget(Button(
-            text="Stop", background_color=(0.8, 0.2, 0.2, 1),
-            on_release=lambda *_: (popup.dismiss(), on_stop())
-        ))
-        content.add_widget(btn_box)
-        popup.open()
-
     def run_single_action(self, action_name: str):
         if not self._active_profile:
             self._log.warn("No profile selected")
             return
 
         action_map = {
+            "sync_src": Action.SYNC_SRC,
             "clean": Action.CLEAN,
             "build": Action.BUILD,
             "patch": Action.PATCH,
@@ -158,36 +129,22 @@ class ActionsScreen(Screen):
         if not action:
             return
 
-        def do_run():
-            self._log.info(f"Starting {action.name}...")
-            self.status_label = f"Running: {action.name}"
-            self.is_running = True
+        self._log.info(f"Starting {action.name}...")
+        self.status_label = f"Running: {action.name}"
+        self.is_running = True
 
-            def on_state_change(state):
-                Clock.schedule_once(lambda dt: self._update_status(state))
+        def on_state_change(state):
+            Clock.schedule_once(lambda dt: self._update_status(state))
 
-            self.log_panel.reset_timer()
+        self.log_panel.reset_timer()
 
-            def run():
-                state = self._runner.run_action(action, self._active_profile, on_state_change=on_state_change)
-                Clock.schedule_once(lambda dt: self._on_action_done(action, state), 0)
+        def run():
+            state = self._runner.run_action(action, self._active_profile, on_state_change=on_state_change)
+            Clock.schedule_once(lambda dt: self._on_action_done(action, state), 0)
 
-            import threading
-            t = threading.Thread(target=run, daemon=True)
-            t.start()
-
-        if action == Action.BUILD:
-            self._check_buildozer_exclusion(
-                on_continue=do_run,
-                on_add=lambda: (
-                    self._active_profile.delete_exclusions.append(".buildozer")
-                    or ProfileStore.save(self._active_profile)
-                    or do_run()
-                ),
-                on_stop=lambda: self._log.info("Build cancelled by user")
-            )
-        else:
-            do_run()
+        import threading
+        t = threading.Thread(target=run, daemon=True)
+        t.start()
 
     def run_scenario(self):
         if not self._active_profile:

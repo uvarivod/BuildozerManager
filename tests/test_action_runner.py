@@ -8,6 +8,20 @@ from src.services.action_runner import ActionRunner
 
 
 class TestValidateAction:
+    def test_sync_src_requires_sourcedir_and_wsl(self):
+        p = Profile(name="test", wsl_dir="", wsl_distro="")
+        missing = ActionRunner.validate_action(Action.SYNC_SRC, p)
+        assert "sourcedir" in missing
+        assert "wsl_dir" in missing
+        assert "wsl_distro" in missing
+
+    def test_sync_src_valid(self):
+        p = Profile(
+            name="test", sourcedir="/src", wsl_dir="/wsl", wsl_distro="Ubuntu"
+        )
+        missing = ActionRunner.validate_action(Action.SYNC_SRC, p)
+        assert missing == []
+
     def test_clean_requires_wsl_dir(self):
         p = Profile(name="test", wsl_dir="", wsl_distro="")
         missing = ActionRunner.validate_action(Action.CLEAN, p)
@@ -19,18 +33,17 @@ class TestValidateAction:
         missing = ActionRunner.validate_action(Action.CLEAN, p)
         assert missing == []
 
-    def test_build_requires_all_fields(self):
+    def test_build_requires_sourcedir_and_wsl(self):
         p = Profile(name="test")
         missing = ActionRunner.validate_action(Action.BUILD, p)
         assert "sourcedir" in missing
-        assert "spec_path" in missing
         assert "wsl_dir" in missing
+        assert "spec_path" not in missing
 
     def test_build_valid(self):
         p = Profile(
             name="test",
             sourcedir="/src",
-            spec_path="/src/buildozer.spec",
             wsl_dir="/wsl",
             wsl_distro="Ubuntu",
         )

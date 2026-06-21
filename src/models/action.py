@@ -2,6 +2,7 @@ from enum import Enum, auto
 
 
 class Action(Enum):
+    SYNC_SRC = auto()
     CLEAN = auto()
     BUILD = auto()
     PATCH = auto()

@@ -45,8 +45,9 @@ class ActionRunner:
     @staticmethod
     def validate_action(action: Action, profile: Profile) -> list[str]:
         required = {
+            Action.SYNC_SRC: ["sourcedir", "wsl_dir", "wsl_distro"],
             Action.CLEAN: ["wsl_dir", "wsl_distro"],
-            Action.BUILD: ["sourcedir", "spec_path", "wsl_dir", "wsl_distro"],
+            Action.BUILD: ["sourcedir", "wsl_dir", "wsl_distro"],
             Action.PATCH: ["wsl_dir", "wsl_distro"],
             Action.DOWNLOAD: ["sourcedir", "wsl_dir", "wsl_distro"],
             Action.PULL_APK: ["sourcedir", "wsl_dir", "wsl_distro"],
@@ -72,7 +73,9 @@ class ActionRunner:
             log_cb("error", f"Cannot run {action.name}: missing {', '.join(missing)}")
             return ActionState.FAILED
 
-        if action == Action.CLEAN:
+        if action == Action.SYNC_SRC:
+            return self._run_sync_src(profile, log_cb)
+        elif action == Action.CLEAN:
             return self._run_clean(profile, log_cb)
         elif action == Action.BUILD:
             return self._run_build(profile, log_cb)
@@ -84,15 +87,26 @@ class ActionRunner:
             return self._run_launch(profile, log_cb)
         return ActionState.FAILED
 
-    def _run_clean(self, profile: Profile, log_cb) -> ActionState:
-        log_cb("info", "Starting Clean...")
+    def _run_sync_src(self, profile: Profile, log_cb) -> ActionState:
+        log_cb("info", "Starting Sync SRC...")
         if not self._wsl.check_wsl_running(profile):
             log_cb("error", "WSL is not running")
             return ActionState.FAILED
-        ok = self._wsl.clean_wsl_dir(profile, log_cb, self._check_cancelled)
+        ok = self._wsl.sync_src(profile, log_cb, self._check_cancelled)
         if self._check_cancelled():
             return ActionState.CANCELLED
-        log_cb("success" if ok else "error", "Clean finished")
+        log_cb("success" if ok else "error", "Sync SRC finished")
+        return ActionState.SUCCESS if ok else ActionState.FAILED
+
+    def _run_clean(self, profile: Profile, log_cb) -> ActionState:
+        log_cb("info", "Starting Clean WSL Project...")
+        if not self._wsl.check_wsl_running(profile):
+            log_cb("error", "WSL is not running")
+            return ActionState.FAILED
+        ok = self._wsl.clean_wsl_project(profile, log_cb, self._check_cancelled)
+        if self._check_cancelled():
+            return ActionState.CANCELLED
+        log_cb("success" if ok else "error", "Clean WSL Project finished")
         return ActionState.SUCCESS if ok else ActionState.FAILED
 
     def _run_build(self, profile: Profile, log_cb) -> ActionState:
@@ -104,22 +118,14 @@ class ActionRunner:
         if not self._wsl.find_spec_in_wsl(profile):
             log_cb("warn", "buildozer.spec not found in WSL build directory")
 
-        log_cb("info", "Cleaning WSL directory...")
+        log_cb("info", "Syncing source to WSL...")
 
-        clean_ok = self._wsl.clean_wsl_dir(profile, log_cb, self._check_cancelled)
+        sync_ok = self._wsl.sync_src(profile, log_cb, self._check_cancelled)
 
         if self._check_cancelled():
             return ActionState.CANCELLED
-        if not clean_ok:
-            log_cb("error", "Clean failed, aborting build")
-            return ActionState.FAILED
-
-        log_cb("info", "Copying source to WSL...")
-        copy_ok = self._wsl.copy_source_to_wsl(profile, log_cb, self._check_cancelled)
-        if self._check_cancelled():
-            return ActionState.CANCELLED
-        if not copy_ok:
-            log_cb("error", "Copy failed, aborting build")
+        if not sync_ok:
+            log_cb("error", "Sync SRC failed, aborting build")
             return ActionState.FAILED
 
         log_cb("info", "Running buildozer...")

@@ -17,7 +17,7 @@ def sample_profile():
         wsl_dir="\\\\wsl.localhost\\Ubuntu-22.04\\home\\alex\\bui",
         wsl_distro="Ubuntu-22.04",
         patches=["patch1", "patch2"],
-        delete_exclusions=[".buildozer"],
+        delete_exclusions=[],
     )
 
 
