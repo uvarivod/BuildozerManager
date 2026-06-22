@@ -22,6 +22,7 @@ class BuildozerManagerApp(App):
     def build(self):
         self._log.info("Buildozer Manager starting...")
 
+        Builder.load_file(str(Path(self.kv_directory) / "action_card.kv"))
         Builder.load_file(str(Path(self.kv_directory) / "actions_screen.kv"))
         Builder.load_file(str(Path(self.kv_directory) / "profile_editor_screen.kv"))
         Builder.load_file(str(Path(self.kv_directory) / "scenario_builder_screen.kv"))
