@@ -8,30 +8,33 @@ from src.services.log_service import LogService, LogLevel
 
 
 class ScenarioService:
-    def __init__(self):
-        self._runner = ActionRunner()
+    def __init__(self, runner: ActionRunner | None = None):
+        self._runner = runner or ActionRunner()
         self._log = LogService()
 
     def get_predefined_scenarios(self) -> list[Scenario]:
         return [
             Scenario(
-                name="Build",
-                action_sequence=[Action.BUILD],
+                name="Full Clean build",
+                action_sequence=[
+                    Action.CLEAN,
+                    Action.SYNC_SRC,
+                    Action.BUILD,
+                    Action.PATCH,
+                    Action.BUILD,
+                    Action.PULL_APK,
+                    Action.RUN,
+                ],
                 stop_on_failure=True,
             ),
             Scenario(
-                name="Clean Build",
-                action_sequence=[Action.CLEAN, Action.BUILD],
-                stop_on_failure=True,
-            ),
-            Scenario(
-                name="Clean Build + Patch",
-                action_sequence=[Action.CLEAN, Action.BUILD, Action.PATCH],
-                stop_on_failure=True,
-            ),
-            Scenario(
-                name="Build and Run",
-                action_sequence=[Action.BUILD, Action.PULL_APK, Action.RUN],
+                name="Rebuild",
+                action_sequence=[
+                    Action.SYNC_SRC,
+                    Action.BUILD,
+                    Action.PULL_APK,
+                    Action.RUN,
+                ],
                 stop_on_failure=True,
             ),
         ]
@@ -42,6 +45,8 @@ class ScenarioService:
         profile,
         log_callback: Callable | None = None,
         cancel_check: Callable | None = None,
+        skip_indices: set[int] | None = None,
+        on_action_state_change: Callable[[int, ActionState], None] | None = None,
     ) -> ScenarioRun:
         run = ScenarioRun(
             scenario_name=scenario.name,
@@ -61,16 +66,34 @@ class ScenarioService:
         cb = log_callback or default_log
         cb("info", f"Starting scenario: {scenario.name}")
 
-        for action in scenario.action_sequence:
+        self._runner.reset_cancel()
+
+        skip_set: set[int] = skip_indices or set()
+        seq = scenario.action_sequence
+
+        for i, action in enumerate(seq):
             if cancel_check and cancel_check():
                 cb("warn", "Scenario cancelled")
                 run.overall_status = ActionState.CANCELLED
+                if on_action_state_change:
+                    on_action_state_change(i, ActionState.CANCELLED)
                 break
 
+            if i in skip_set:
+                cb("info", f"Skipping action: {action.name}")
+                run.per_action_status[action.name] = ActionState.SKIPPED
+                if on_action_state_change:
+                    on_action_state_change(i, ActionState.SKIPPED)
+                continue
+
             cb("info", f"Running action: {action.name}")
+            if on_action_state_change:
+                on_action_state_change(i, ActionState.RUNNING)
             state = self._runner.run_action(action, profile)
             run.per_action_status[action.name] = state
             cb("info", f"Action {action.name} finished: {state.name}")
+            if on_action_state_change:
+                on_action_state_change(i, state)
 
             if state in (ActionState.FAILED, ActionState.CANCELLED) and scenario.stop_on_failure:
                 cb("warn", f"Scenario stopped due to {state.name} on {action.name}")
@@ -78,7 +101,7 @@ class ScenarioService:
                 break
         else:
             all_ok = all(
-                s == ActionState.SUCCESS
+                s in (ActionState.SUCCESS, ActionState.SKIPPED)
                 for s in run.per_action_status.values()
             )
             run.overall_status = ActionState.SUCCESS if all_ok else ActionState.FAILED

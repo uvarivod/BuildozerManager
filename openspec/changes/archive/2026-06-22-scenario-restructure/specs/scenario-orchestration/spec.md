@@ -2,9 +2,9 @@
 
 ## Purpose
 
-Execute sequences of actions (scenarios) with predefined and user-customizable combinations, showing aggregate results and stopping on failure by default.
+Execute sequences of actions (scenarios) with predefined and user-customizable combinations, showing aggregate results, per-action skip support, and stopping on failure by default.
 
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: System provides precisely two predefined scenarios
 The system SHALL include exactly two built-in scenarios: "Full Clean build" and "Rebuild". The previous four-scenario set (Build, Clean Build, Clean Build + Patch, Build and Run) SHALL be removed.
@@ -26,25 +26,6 @@ The system SHALL include exactly two built-in scenarios: "Full Clean build" and 
 - **THEN** the system runs PULL_APK (copy APK from WSL to local sourcedir/bin)
 - **THEN** the system runs RUN (install APK via ADB and launch on device)
 
-### Requirement: Scenario runner accepts a skip mask
-The system SHALL accept an optional `skip_actions` parameter (a set of Action enums) in the `run_scenario` method. Actions in this set SHALL be skipped during execution — their state SHALL be recorded as "Skipped" and the runner SHALL proceed to the next action.
-
-#### Scenario: Skip actions during scenario run
-- **WHEN** the user selects "Full Clean build"
-- **WHEN** the skip mask contains `{Action.PATCH}`
-- **WHEN** the user clicks "Run Scenario"
-- **THEN** the runner skips PATCH but executes all other actions (CLEAN, SYNC_SRC, BUILD, BUILD, PULL_APK, RUN) in order
-- **THEN** PATCH is recorded with status "Skipped"
-- **THEN** the scenario result shows overall duration excluding skipped actions
-
-### Requirement: User can create custom scenarios
-The system SHALL allow composing any sequence of actions into a named custom scenario.
-
-#### Scenario: Create custom scenario
-- **WHEN** the user opens the scenario builder
-- **THEN** they can name the scenario and select actions (Sync SRC, Clean, Build, Patch, Download, Run)
-- **THEN** the scenario is saved and appears in the scenarios list
-
 ### Requirement: Scenario execution shows aggregate results
 The system SHALL display start time, duration, per-action status, and overall pass/fail for each scenario run. Per-action status SHALL include "Skipped" as a valid state in addition to Success, Failed, and Cancelled.
 
@@ -65,3 +46,16 @@ The system SHALL stop executing remaining actions if any action in the sequence 
 - **WHEN** the Build action fails during a scenario
 - **WHEN** the Run action was already marked as skipped in the skip mask
 - **THEN** the Run action is recorded as "Skipped" (not affected by the failure cascade)
+
+## ADDED Requirements
+
+### Requirement: Scenario runner accepts a skip mask
+The system SHALL accept an optional `skip_actions` parameter (a set of Action enums) in the `run_scenario` method. Actions in this set SHALL be skipped during execution — their state SHALL be recorded as "Skipped" and the runner SHALL proceed to the next action.
+
+#### Scenario: Skip actions during scenario run
+- **WHEN** the user selects "Full Clean build"
+- **WHEN** the skip mask contains `{Action.PATCH}`
+- **WHEN** the user clicks "Run Scenario"
+- **THEN** the runner skips PATCH but executes all other actions (CLEAN, SYNC_SRC, BUILD, BUILD, PULL_APK, RUN) in order
+- **THEN** PATCH is recorded with status "Skipped"
+- **THEN** the scenario result shows overall duration excluding skipped actions

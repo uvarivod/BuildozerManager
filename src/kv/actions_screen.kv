@@ -1,10 +1,12 @@
 #:kivy 2.3.1
 #:import LogPanel src.screens.log_panel.LogPanel
+#:import ActionCard src.screens.action_card.ActionCard
 
 <ActionsScreen>:
     log_panel: log_panel
     scenario_spinner: scenario_spinner
     profile_spinner: profile_spinner
+    chain_container: chain_container
     BoxLayout:
         orientation: 'vertical'
         padding: 10
@@ -46,70 +48,66 @@
         BoxLayout:
             orientation: 'horizontal'
             size_hint_y: None
-            height: 120
+            height: 36
             spacing: 10
+            Label:
+                text: 'Scenarios'
+                bold: True
+                size_hint_x: None
+                width: 80
+            Spinner:
+                id: scenario_spinner
+                text: 'Select scenario'
+                size_hint_x: 0.4
+                size_hint_y: None
+                height: 36
+                on_text: root.on_scenario_selected(self.text)
             BoxLayout:
-                orientation: 'vertical'
-                spacing: 6
-                size_hint_x: 0.5
+                orientation: 'horizontal'
+                size_hint_x: None
+                width: 250
+                spacing: 2
+                BoxLayout:
+                CheckBox:
+                    active: root.allow_separate_execution
+                    on_active: setattr(root, 'allow_separate_execution', args[1])
                 Label:
-                    text: 'Actions'
-                    bold: True
-                    size_hint_y: None
-                    height: 24
-                GridLayout:
-                    cols: 2
-                    spacing: 6
-                    Button:
-                        text: 'Sync SRC'
-                        on_release: root.run_single_action('sync_src')
-                    Button:
-                        text: 'Clean'
-                        on_release: root.run_single_action('clean')
-                    Button:
-                        text: 'Build'
-                        on_release: root.run_single_action('build')
-                    Button:
-                        text: 'Patch'
-                        on_release: root.run_single_action('patch')
-                    Button:
-                        text: 'Pull APK'
-                        on_release: root.run_single_action('pull_apk')
-                    Button:
-                        text: 'Run (ADB)'
-                        on_release: root.run_single_action('run')
-                        size_hint_x: 1
-                    Button:
-                        text: 'Cancel'
-                        background_color: 0.8, 0.2, 0.2, 1
-                        disabled: not root.is_running
-                        on_release: root.cancel_action()
+                    text: 'Allow running separately'
+                    size_hint_x: None
+                    width: 200
+                    halign: 'left'
+                    valign: 'middle'
+                    text_size: self.size
+
+        ScrollView:
+            size_hint_y: None
+            height: 140
+            do_scroll_x: True
+            do_scroll_y: False
             BoxLayout:
-                orientation: 'vertical'
-                spacing: 6
-                size_hint_x: 0.5
-                Label:
-                    text: 'Scenarios'
-                    bold: True
-                    size_hint_y: None
-                    height: 24
-                Spinner:
-                    id: scenario_spinner
-                    text: 'Select scenario'
-                    size_hint_y: None
-                    height: 40
-                Button:
-                    text: 'Run Scenario'
-                    size_hint_y: None
-                    height: 40
-                    background_color: 0.2, 0.6, 0.2, 1
-                    on_release: root.run_scenario()
-                Button:
-                    text: 'Cancel'
-                    size_hint_y: None
-                    height: 30
-                    background_color: 0.8, 0.2, 0.2, 1
-                    disabled: not root.is_running
-                    on_release: root.cancel_action()
+                id: chain_container
+                orientation: 'horizontal'
+                size_hint_x: None
+                spacing: 4
+                padding: [4, 4]
+        BoxLayout:
+            orientation: 'horizontal'
+            size_hint_y: None
+            height: 40
+            spacing: 10
+            Button:
+                text: 'Run Scenario'
+                size_hint_x: None
+                width: 160
+                background_color: 0.2, 0.6, 0.2, 1
+                disabled: root.is_running or not root.scenario_spinner or root.scenario_spinner.text == 'Select scenario'
+                on_release: root.run_scenario()
+            Button:
+                text: 'Cancel'
+                size_hint_x: None
+                width: 120
+                background_color: 0.8, 0.2, 0.2, 1
+                disabled: not root.is_running
+                on_release: root.cancel_action()
         LogPanel:
             id: log_panel
