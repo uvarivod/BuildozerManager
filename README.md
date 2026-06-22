@@ -27,5 +27,5 @@ A Kivy-based desktop GUI for managing [Buildozer](https://github.com/kivy/buildo
 
 ## Requirements
 
-- Python 3.8+
+- Python 3.13+
 - Kivy 2.3.1 (installed automatically via `requirements.txt`)
