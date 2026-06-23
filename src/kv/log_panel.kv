@@ -1,4 +1,5 @@
 #:kivy 2.3.1
+#:import SelectableLogInput src.screens.log_panel
 
 <LogPanel>:
     log_display: log_label
@@ -35,7 +36,7 @@
             scroll_type: ['bars', 'content']
             bar_color: 0.3, 0.6, 0.9, 0.8
             bar_inactive_color: 0.3, 0.6, 0.9, 0.3
-            TextInput:
+            SelectableLogInput:
                 id: log_label
                 readonly: True
                 font_name: 'RobotoMono-Regular'

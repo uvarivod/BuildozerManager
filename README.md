@@ -29,3 +29,7 @@ A Kivy-based desktop GUI for managing [Buildozer](https://github.com/kivy/buildo
 
 - Python 3.13+
 - Kivy 2.3.1 (installed automatically via `requirements.txt`)
+
+## Known Issues
+
+- Unable to select continue text selection after scrolling
