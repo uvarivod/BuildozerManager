@@ -5,10 +5,38 @@ from kivy.uix.popup import Popup
 from kivy.uix.label import Label
 from kivy.uix.button import Button
 from kivy.uix.textinput import TextInput
+from kivy.core.window import Window
 from src.services.log_service import LogService, LogEvent
 
 
 MAX_LOG_LINES = 1000
+
+class SelectableLogInput(TextInput):
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self._sel_anchor = None
+
+    def on_touch_down(self, touch):
+        if not self.collide_point(*touch.pos):
+            return super().on_touch_down(touch)
+
+        if 'shift' in Window.modifiers:
+            anchor = self._sel_anchor if self._sel_anchor is not None else 0
+            
+            # Prevent Kivy from hijacking the click as a double-tap word selection
+            old_double = touch.is_double_tap
+            touch.is_double_tap = False
+            super().on_touch_down(touch)
+            touch.is_double_tap = old_double
+            
+            current = self.cursor_index()
+            self.select_text(min(anchor, current), max(anchor, current))
+            self._sel_anchor = anchor
+            return True
+
+        res = super().on_touch_down(touch)
+        self._sel_anchor = self.cursor_index()
+        return res
 
 class LogPanel(BoxLayout):
     log_display = ObjectProperty(None)
