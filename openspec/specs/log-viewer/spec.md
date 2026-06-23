@@ -51,3 +51,16 @@ The system SHALL allow clearing the current log display.
 #### Scenario: Clear log
 - **WHEN** the user clicks "Clear Log"
 - **THEN** all log entries are removed from the display
+
+### Requirement: Text selection with SHIFT+click range-select
+The system SHALL support selecting log text by click-drag within the viewport and by SHIFT+click range selection across arbitrarily distant lines.
+
+#### Scenario: SHIFT+click range selection
+- **WHEN** the user clicks a line in the log panel to set an anchor
+- **AND** then SHIFT+clicks a different visible line
+- **THEN** all text between the anchor and the clicked line is selected
+
+#### Scenario: Plain click resets anchor
+- **WHEN** the user plain-clicks a new line after a previous selection
+- **THEN** the selection anchor is reset to the new click position
+- **THEN** a subsequent SHIFT+click selects from the new anchor
