@@ -4,6 +4,11 @@ from kivy.uix.screenmanager import Screen
 from kivy.properties import ObjectProperty, StringProperty
 from kivy.clock import Clock
 
+from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.checkbox import CheckBox
+from kivy.uix.label import Label
+
+from src.models.patch import PatchRegistry
 from src.models.profile import Profile
 from src.services.storage_service import ProfileStore, SettingsStore
 from src.services.log_service import LogService
@@ -17,15 +22,46 @@ class ProfileEditorScreen(Screen):
     wsl_dir_input = ObjectProperty(None)
     wsl_distro_input = ObjectProperty(None)
     excluded_files_input = ObjectProperty(None)
-    patches_input = ObjectProperty(None)
+    patches_container = ObjectProperty(None)
     delete_exclusions_input = ObjectProperty(None)
     save_btn = ObjectProperty(None)
 
     def __init__(self, **kwargs):
-        super().__init__(**kwargs)
         self._log = LogService()
         self._editing_profile: Profile | None = None
         self._orig_name: str = ""
+        self._patch_checkboxes: dict[str, CheckBox] = {}
+        super().__init__(**kwargs)
+
+    def on_kv_post(self, base_widget):
+        self._build_patch_selector()
+
+    def _build_patch_selector(self):
+        if not self.patches_container:
+            return
+        self.patches_container.clear_widgets()
+        self._patch_checkboxes = {}
+
+        selected = set()
+        if self._editing_profile:
+            selected = set(self._editing_profile.patches)
+
+        for patch in PatchRegistry.list_patches():
+            row = BoxLayout(size_hint_y=None, height=28, spacing=4, padding=[4, 0])
+            cb = CheckBox(active=patch.name in selected, size_hint_x=None, width=28)
+            desc = f" ({patch.description})" if patch.description else ""
+            lbl = Label(
+                text=f"{patch.name}{desc}",
+                font_size="11sp",
+                color=(0.8, 0.8, 0.8, 1),
+                halign="left",
+                valign="middle",
+            )
+            row.bind(size=lambda inst, sz, lb=lbl: setattr(lb, 'text_size', (max(sz[0] - 36, 0), None)))
+            row.add_widget(cb)
+            row.add_widget(lbl)
+            self.patches_container.add_widget(row)
+            self._patch_checkboxes[patch.name] = cb
 
     def load_profile(self, profile: Profile):
         self._editing_profile = profile
@@ -37,8 +73,8 @@ class ProfileEditorScreen(Screen):
         self.wsl_dir_input.text = profile.wsl_dir
         self.wsl_distro_input.text = profile.wsl_distro
         self.excluded_files_input.text = ", ".join(profile.excluded_files)
-        self.patches_input.text = ", ".join(profile.patches)
         self.delete_exclusions_input.text = ", ".join(profile.delete_exclusions)
+        self._build_patch_selector()
         self._cursor_end(self.sourcedir_input)
         self._cursor_end(self.spec_path_input)
 
@@ -52,10 +88,13 @@ class ProfileEditorScreen(Screen):
         self.wsl_dir_input.text = ""
         self.wsl_distro_input.text = "Ubuntu-22.04"
         self.excluded_files_input.text = ""
-        self.patches_input.text = ""
         self.delete_exclusions_input.text = ""
+        self._build_patch_selector()
 
     def _build_profile(self, name: str) -> Profile:
+        selected_patches = [
+            name for name, cb in self._patch_checkboxes.items() if cb.active
+        ]
         return Profile(
             name=name,
             sourcedir=self.sourcedir_input.text.strip(),
@@ -64,7 +103,7 @@ class ProfileEditorScreen(Screen):
             wsl_dir=self.wsl_dir_input.text.strip(),
             wsl_distro=self.wsl_distro_input.text.strip(),
             excluded_files=[x.strip() for x in self.excluded_files_input.text.split(",") if x.strip()],
-            patches=[x.strip() for x in self.patches_input.text.split(",") if x.strip()],
+            patches=selected_patches,
             delete_exclusions=[x.strip() for x in self.delete_exclusions_input.text.split(",") if x.strip()],
         )
 

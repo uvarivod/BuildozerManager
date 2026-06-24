@@ -4,7 +4,7 @@ from src.patches import register_patch
 
 
 @register_patch(name="disable_analytics", description="Disables Firebase/Analytics in buildozer.spec")
-def disable_analytics(buildozer_path: Path):
+def disable_analytics(buildozer_path: Path, **kwargs):
     spec_path = buildozer_path.parent / "buildozer.spec"
     if not spec_path.exists():
         return

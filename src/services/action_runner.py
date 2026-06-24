@@ -147,9 +147,18 @@ class ActionRunner:
             log_cb("info", "No patches configured for this profile")
             return ActionState.SUCCESS
 
-        result = self._patches.apply_patches(patches_to_apply, buildozer_path, log_cb)
+        result = self._patches.apply_patches(patches_to_apply, buildozer_path, log_cb, profile=profile)
         if self._check_cancelled():
             return ActionState.CANCELLED
+        return ActionState.SUCCESS if result else ActionState.FAILED
+
+    def run_single_patch(self, patch_name: str, profile: Profile, log_cb) -> ActionState:
+        buildozer_path = self._wsl._wsl_path(profile) / ".buildozer"
+        if not buildozer_path.is_dir():
+            log_cb("error", ".buildozer directory not found in WSL")
+            return ActionState.FAILED
+
+        result = self._patches.apply_patches([patch_name], buildozer_path, log_cb, profile=profile)
         return ActionState.SUCCESS if result else ActionState.FAILED
 
     def _run_pull_apk(self, profile: Profile, log_cb) -> ActionState:

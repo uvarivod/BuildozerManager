@@ -6,7 +6,7 @@ from kivy.clock import Clock
 from src.models.action import Action, ActionState
 from src.models.profile import Profile
 from src.models.scenario import Scenario
-from src.screens.action_card import ActionCard
+from src.screens.action_card import ActionCard, PatchCard
 from src.services.action_runner import ActionRunner
 from src.services.scenario_service import ScenarioService
 from src.services.log_service import LogService
@@ -87,6 +87,8 @@ class ActionsScreen(Screen):
             if self.profile_spinner:
                 self.profile_spinner.text = profile.name
             self._updating_spinner = False
+            if self._current_scenario:
+                self._build_action_chain(self._current_scenario)
         else:
             self.status_label = "No profile selected"
 
@@ -180,11 +182,22 @@ class ActionsScreen(Screen):
                     color=(0.6, 0.6, 0.6, 1),
                 )
                 self.chain_container.add_widget(arrow)
-            card = ActionCard(
-                action=action,
-                on_card_click=self._on_action_card_click,
-                allow_click=self.allow_separate_execution,
-            )
+
+            if action == Action.PATCH and self._active_profile:
+                card = PatchCard(
+                    action=action,
+                    on_card_click=self._on_action_card_click,
+                    on_patch_click=self._on_patch_card_click,
+                    profile=self._active_profile,
+                    allow_click=self.allow_separate_execution,
+                )
+                card._build_patch_buttons()
+            else:
+                card = ActionCard(
+                    action=action,
+                    on_card_click=self._on_action_card_click,
+                    allow_click=self.allow_separate_execution,
+                )
             card.action_index = i
             cards.append(card)
             self.chain_container.add_widget(card)
@@ -192,7 +205,7 @@ class ActionsScreen(Screen):
         # Force container width to fit all children
         self.chain_container.bind(minimum_width=self.chain_container.setter("width"))
 
-    def _on_action_card_click(self, action: Action):
+    def _on_action_card_click(self, action: Action, card_index: int = -1):
         if not self._active_profile:
             self._log.warn("No profile selected")
             return
@@ -200,8 +213,7 @@ class ActionsScreen(Screen):
             self._log.warn("Individual action execution is disabled")
             return
 
-        card_index = -1
-        if hasattr(self, "_action_cards"):
+        if card_index < 0 and hasattr(self, "_action_cards"):
             for i, card in enumerate(self._action_cards):
                 if card.action == action:
                     card_index = i
@@ -230,6 +242,57 @@ class ActionsScreen(Screen):
         import threading
         t = threading.Thread(target=run, daemon=True)
         t.start()
+
+    def _on_patch_card_click(self, action: Action, patch_name: str):
+        if not self._active_profile:
+            self._log.warn("No profile selected")
+            return
+        if not self.allow_separate_execution:
+            self._log.warn("Individual action execution is disabled")
+            return
+
+        card = None
+        if hasattr(self, "_action_cards"):
+            for c in self._action_cards:
+                if c.action == action and hasattr(c, "set_patch_state"):
+                    card = c
+                    break
+
+        self._log.info(f"Starting patch: {patch_name}...")
+        self.status_label = f"Running: {patch_name}"
+        self.is_running = True
+        self._disable_controls()
+        self._run_counter += 1
+        run_id = self._run_counter
+
+        self.log_panel.reset_timer()
+
+        def run():
+            if card:
+                card.set_patch_state(patch_name, "RUNNING")
+            log_cb = self._runner._make_log_callback(patch_name)
+
+            log_cb("info", f"STARTING SINGLE PATCH: {patch_name}")
+            state = self._runner.run_single_patch(patch_name, self._active_profile, log_cb)
+
+            if card:
+                card.set_patch_state(patch_name, state.name)
+            Clock.schedule_once(lambda dt: self._on_single_patch_done(patch_name, state, run_id, card), 0)
+
+        import threading
+        t = threading.Thread(target=run, daemon=True)
+        t.start()
+
+    def _on_single_patch_done(self, patch_name: str, state: ActionState, run_id: int, card=None):
+        if run_id != self._run_counter:
+            return
+        self.log_panel.stop_timer()
+        self._log.info(f"Patch '{patch_name}': {state.name}")
+        self.status_label = f"Patch '{patch_name}': {state.name}"
+        self.is_running = False
+        if card:
+            card.set_patch_state(patch_name, state.name)
+        self._enable_controls()
 
     def run_scenario(self):
         if not self._active_profile:
