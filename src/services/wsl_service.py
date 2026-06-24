@@ -278,6 +278,7 @@ class WSLService:
             _progress_state: dict[str, int] = {}
             _last_line_time = time.monotonic()
             _last_heartbeat = 0.0
+            _buildozer_failed = False
             while True:
                 if cancel_check and cancel_check():
                     process.kill()
@@ -348,6 +349,8 @@ class WSLService:
                     parsed = self._parse_buildozer_line(line)
                     if parsed:
                         level, msg = parsed
+                        if "buildozer failed" in msg.lower():
+                            _buildozer_failed = True
                         if level == "debug" and len(msg) > 300:
                             msg = msg[:297] + "..."
                         log_callback(level, msg, source="buildozer")
@@ -355,6 +358,10 @@ class WSLService:
             process.wait()
             if log_callback:
                 log_callback("debug", f"Buildozer exit code: {process.returncode} (lines: {lines_read})", source="buildozer")
+            if _buildozer_failed:
+                if log_callback:
+                    log_callback("error", "Buildozer reported a failure in its output", source="buildozer")
+                return False
             return process.returncode == 0
         except FileNotFoundError:
             if log_callback:

@@ -8,7 +8,7 @@
     wsl_dir_input: wsl_dir_input
     wsl_distro_input: wsl_distro_input
     excluded_files_input: excluded_files_input
-    patches_input: patches_input
+    patches_container: patches_container
     delete_exclusions_input: delete_exclusions_input
     BoxLayout:
         orientation: 'vertical'
@@ -93,14 +93,36 @@
                     height: 32
                     multiline: False
                 Label:
-                    text: 'Patches (comma-sep)'
+                    text: 'Patches'
                     size_hint_y: None
                     height: 32
-                TextInput:
-                    id: patches_input
+                    valign: 'middle'
+                BoxLayout:
+                    orientation: 'vertical'
                     size_hint_y: None
-                    height: 32
-                    multiline: False
+                    height: self.minimum_height
+                    spacing: 2
+                    padding: [4, 4]
+                    canvas.before:
+                        Color:
+                            rgba: 0.2, 0.2, 0.2, 0.3
+                        Rectangle:
+                            size: self.size
+                            pos: self.pos
+                    Label:
+                        text: 'Select patches to use with this profile:'
+                        font_size: '11sp'
+                        color: (0.7, 0.7, 0.7, 1)
+                        size_hint_y: None
+                        height: 20
+                        halign: 'left'
+                        text_size: self.width, None
+                    BoxLayout:
+                        id: patches_container
+                        orientation: 'vertical'
+                        size_hint_y: None
+                        height: self.minimum_height
+                        spacing: 2
                 BoxLayout:
                     size_hint_y: None
                     height: 32

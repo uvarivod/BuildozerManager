@@ -48,3 +48,81 @@
             valign: 'middle'
             text_size: self.size
 
+<PatchCard>:
+    orientation: 'horizontal'
+    size_hint_x: None
+    width: 360
+    padding: [0, 0]
+    spacing: 0
+    canvas.before:
+        Color:
+            rgba: (0.2, 0.6, 0.2, 0.3) if root.action_state == 'SUCCESS' else (0.6, 0.2, 0.2, 0.3) if root.action_state == 'FAILED' else (0.8, 0.6, 0.1, 0.3) if root.action_state == 'RUNNING' else (0.15, 0.15, 0.15, 1) if not root.is_skipped else (0.1, 0.1, 0.1, 0.5)
+        Rectangle:
+            pos: self.pos
+            size: self.size
+        Color:
+            rgba: (0.2, 0.6, 0.2, 1) if root.action_state == 'SUCCESS' else (0.6, 0.2, 0.2, 1) if root.action_state == 'FAILED' else (0.8, 0.6, 0.1, 1) if root.action_state == 'RUNNING' else (0.3, 0.3, 0.3, 1)
+        Line:
+            rectangle: self.x, self.y, self.width, self.height
+    BoxLayout:
+        orientation: 'vertical'
+        size_hint_x: None
+        width: 160
+        padding: [6, 6]
+        spacing: 4
+        Button:
+            text: root.action_name
+            size_hint_y: None
+            height: 40
+            disabled: not root.allow_click or root.action_state == 'RUNNING'
+            on_release: root.on_button_pressed()
+        Label:
+            text: root.description
+            size_hint_y: None
+            height: 24
+            font_size: '11sp'
+            color: (0.7, 0.7, 0.7, 1)
+            text_size: self.width, None
+            halign: 'center'
+            valign: 'middle'
+        BoxLayout:
+            size_hint_y: None
+            height: 26
+            spacing: 2
+            padding: [0, 0]
+            BoxLayout:
+            CheckBox:
+                active: root.is_skipped
+                on_active: setattr(root, 'is_skipped', args[1])
+            Label:
+                text: 'Skip'
+                font_size: '11sp'
+                color: (0.7, 0.7, 0.7, 1)
+                halign: 'left'
+                valign: 'middle'
+                text_size: self.size
+    BoxLayout:
+        orientation: 'vertical'
+        size_hint_x: None
+        width: 200
+        padding: [4, 4]
+        spacing: 2
+        BoxLayout:
+            size_hint_y: None
+            height: 22
+            Label:
+                text: 'Patches'
+                bold: True
+                font_size: '11sp'
+                color: (0.8, 0.8, 0.8, 1)
+                halign: 'center'
+                valign: 'middle'
+        ScrollView:
+            do_scroll_x: False
+            do_scroll_y: True
+            GridLayout:
+                id: patch_buttons_grid
+                cols: 1
+                size_hint_y: None
+                height: self.minimum_height
+                spacing: 2

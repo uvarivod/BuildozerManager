@@ -3,6 +3,8 @@ from kivy.uix.screenmanager import ScreenManager
 from kivy.lang import Builder
 from pathlib import Path
 
+import src.patches
+
 from .screens.actions_screen import ActionsScreen
 from .screens.profile_editor_screen import ProfileEditorScreen
 from .screens.scenario_builder_screen import ScenarioBuilderScreen

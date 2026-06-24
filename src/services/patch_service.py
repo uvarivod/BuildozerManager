@@ -10,6 +10,7 @@ class PatchService:
         patch_names: list[str],
         buildozer_path: Path,
         log_callback: Callable | None = None,
+        profile=None,
     ) -> bool:
         all_success = True
         for name in patch_names:
@@ -22,9 +23,14 @@ class PatchService:
             try:
                 if log_callback:
                     log_callback("info", f"Applying patch: {name}")
-                func(buildozer_path)
-                if log_callback:
-                    log_callback("success", f"Patch '{name}' applied")
+                result = func(buildozer_path, profile=profile, log_callback=log_callback)
+                if result is False:
+                    if log_callback:
+                        log_callback("error", f"Patch '{name}' reported failure")
+                    all_success = False
+                else:
+                    if log_callback:
+                        log_callback("success", f"Patch '{name}' applied")
             except Exception as e:
                 if log_callback:
                     log_callback("error", f"Patch '{name}' failed: {e}")
