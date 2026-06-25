@@ -16,6 +16,7 @@ class ScenarioService:
         return [
             Scenario(
                 name="Full Clean build",
+                description="Clean WSL directory, sync source, build, apply patches, rebuild, pull APK, and run on device",
                 action_sequence=[
                     Action.CLEAN,
                     Action.SYNC_SRC,
@@ -26,9 +27,11 @@ class ScenarioService:
                     Action.RUN,
                 ],
                 stop_on_failure=True,
+                is_predefined=True,
             ),
             Scenario(
                 name="Rebuild",
+                description="Sync source, build, pull APK, and run on device",
                 action_sequence=[
                     Action.SYNC_SRC,
                     Action.BUILD,
@@ -36,6 +39,7 @@ class ScenarioService:
                     Action.RUN,
                 ],
                 stop_on_failure=True,
+                is_predefined=True,
             ),
         ]
 

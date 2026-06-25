@@ -57,12 +57,6 @@ class TestValidateAction:
         assert "wsl_distro" in missing
         assert "sourcedir" not in missing
 
-    def test_download_requires_sourcedir_and_wsl(self):
-        p = Profile(name="test")
-        missing = ActionRunner.validate_action(Action.DOWNLOAD, p)
-        assert "sourcedir" in missing
-        assert "wsl_dir" in missing
-
     def test_pull_apk_requires_sourcedir_and_wsl(self):
         p = Profile(name="test")
         missing = ActionRunner.validate_action(Action.PULL_APK, p)

@@ -10,7 +10,7 @@ from src.screens.action_card import ActionCard, PatchCard
 from src.services.action_runner import ActionRunner
 from src.services.scenario_service import ScenarioService
 from src.services.log_service import LogService
-from src.services.storage_service import ProfileStore
+from src.services.storage_service import ProfileStore, ScenarioStore, SettingsStore
 
 
 class ActionsScreen(Screen):
@@ -26,6 +26,7 @@ class ActionsScreen(Screen):
         if hasattr(self, "_action_cards"):
             for card in self._action_cards:
                 card.allow_click = value
+        self._save_separate_setting()
 
     def toggle_allow_separate(self):
         self.allow_separate_execution = not self.allow_separate_execution
@@ -41,6 +42,12 @@ class ActionsScreen(Screen):
         self._updating_spinner = False
         self._run_counter = 0
         self.on_profile_selected = None
+        settings = SettingsStore.load()
+        saved = settings.get("allow_separate_execution", False)
+        self.allow_separate_execution = saved
+
+    def _save_separate_setting(self):
+        SettingsStore.save({"allow_separate_execution": self.allow_separate_execution})
 
     def _on_action_state_change(self, action_index: int, state: ActionState):
         if hasattr(self, "_action_cards") and 0 <= action_index < len(self._action_cards):
@@ -148,8 +155,14 @@ class ActionsScreen(Screen):
         editor.clear_fields()
         self.manager.current = "editor"
 
+    def open_scenario_editor(self):
+        if self.manager:
+            self.manager.current = "scenario_builder"
+
     def _refresh_scenarios(self):
-        self._scenarios = self._scenario_service.get_predefined_scenarios()
+        predefined = self._scenario_service.get_predefined_scenarios()
+        user = ScenarioStore.load_all()
+        self._scenarios = predefined + user
         if self.scenario_spinner:
             self.scenario_spinner.values = [s.name for s in self._scenarios]
 

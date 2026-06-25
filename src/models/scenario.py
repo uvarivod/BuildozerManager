@@ -7,8 +7,10 @@ from .action import Action, ActionState
 @dataclass
 class Scenario:
     name: str
+    description: str = ""
     action_sequence: list[Action] = field(default_factory=list)
     stop_on_failure: bool = True
+    is_predefined: bool = False
 
 
 @dataclass
