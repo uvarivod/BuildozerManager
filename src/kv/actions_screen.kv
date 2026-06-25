@@ -40,6 +40,12 @@
                 size_hint_x: None
                 width: 100
                 on_release: root.new_profile()
+            Button:
+                text: 'Scenarios'
+                size_hint_x: None
+                width: 100
+                disabled: root.is_running
+                on_release: root.open_scenario_editor()
         Label:
             text: root.status_label
             bold: True

@@ -3,6 +3,8 @@ import sys
 from kivy import Config
 from pathlib import Path
 Config.set('kivy', 'keyboard_mode', 'system')
+Config.set('input', 'mouse', 'mouse,disable_multitouch')
+
 # Ensure Kivy dependency DLLs (SDL2, GLEW, etc.) are on PATH
 _venv_share = Path(sys.prefix) / "share"
 for dep_dir in ["sdl2", "glew", "angle"]:

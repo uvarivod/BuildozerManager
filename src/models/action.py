@@ -6,7 +6,6 @@ class Action(Enum):
     CLEAN = auto()
     BUILD = auto()
     PATCH = auto()
-    DOWNLOAD = auto()
     PULL_APK = auto()
     RUN = auto()
 
@@ -21,7 +20,6 @@ _ACTION_DESCRIPTIONS: dict[Action, str] = {
     Action.BUILD: "Build APK with Buildozer",
     Action.PATCH: "Apply patches to .buildozer",
     Action.PULL_APK: "Download APK from WSL",
-    Action.DOWNLOAD: "Download APK from WSL",
     Action.RUN: "Install and run APK on device",
 }
 

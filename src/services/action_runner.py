@@ -49,7 +49,6 @@ class ActionRunner:
             Action.CLEAN: ["wsl_dir", "wsl_distro"],
             Action.BUILD: ["sourcedir", "wsl_dir", "wsl_distro"],
             Action.PATCH: ["wsl_dir", "wsl_distro"],
-            Action.DOWNLOAD: ["sourcedir", "wsl_dir", "wsl_distro"],
             Action.PULL_APK: ["sourcedir", "wsl_dir", "wsl_distro"],
             Action.RUN: ["sourcedir", "spec_path", "wsl_dir", "wsl_distro", "adb_path"],
         }
@@ -81,7 +80,7 @@ class ActionRunner:
             return self._run_build(profile, log_cb)
         elif action == Action.PATCH:
             return self._run_patch(profile, log_cb)
-        elif action in (Action.DOWNLOAD, Action.PULL_APK):
+        elif action == Action.PULL_APK:
             return self._run_pull_apk(profile, log_cb)
         elif action == Action.RUN:
             return self._run_launch(profile, log_cb)
@@ -117,16 +116,6 @@ class ActionRunner:
 
         if not self._wsl.find_spec_in_wsl(profile):
             log_cb("warn", "buildozer.spec not found in WSL build directory")
-
-        log_cb("info", "Syncing source to WSL...")
-
-        sync_ok = self._wsl.sync_src(profile, log_cb, self._check_cancelled)
-
-        if self._check_cancelled():
-            return ActionState.CANCELLED
-        if not sync_ok:
-            log_cb("error", "Sync SRC failed, aborting build")
-            return ActionState.FAILED
 
         log_cb("info", "Running buildozer...")
         build_ok = self._wsl.exec_buildozer(profile, log_callback=log_cb, cancel_check=self._check_cancelled)

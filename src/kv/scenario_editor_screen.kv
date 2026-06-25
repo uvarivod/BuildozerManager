@@ -1,0 +1,117 @@
+#:kivy 2.3.1
+
+<ScenarioEditorScreen>:
+    scenario_list_container: scenario_list
+    editor_container: editor_box
+    palette_container: palette_box
+    undo_btn: undo_btn
+    redo_btn: redo_btn
+    save_btn: save_btn
+    delete_btn: delete_btn
+    back_btn: back_btn
+    BoxLayout:
+        orientation: 'vertical'
+        padding: 10
+        spacing: 8
+        BoxLayout:
+            size_hint_y: None
+            height: 40
+            spacing: 10
+            Button:
+                id: back_btn
+                text: '<- Back'
+                size_hint_x: None
+                width: 100
+                on_release: root.on_back()
+            Label:
+                text: 'Scenario Editor'
+                bold: True
+                font_size: '16sp'
+                halign: 'center'
+                valign: 'middle'
+        BoxLayout:
+            orientation: 'horizontal'
+            spacing: 8
+            BoxLayout:
+                orientation: 'vertical'
+                size_hint_x: None
+                width: 200
+                spacing: 4
+                Label:
+                    text: 'Scenarios'
+                    bold: True
+                    size_hint_y: None
+                    height: 24
+                    font_size: '12sp'
+                    color: (0.8, 0.8, 0.8, 1)
+                ScrollView:
+                    do_scroll_x: False
+                    do_scroll_y: True
+                    GridLayout:
+                        id: scenario_list
+                        cols: 1
+                        size_hint_y: None
+                        height: self.minimum_height
+                        spacing: 2
+                        padding: [2, 2]
+            BoxLayout:
+                orientation: 'vertical'
+                id: editor_box
+                spacing: 4
+                padding: [4, 4]
+                canvas.before:
+                    Color:
+                        rgba: (0.15, 0.15, 0.15, 1)
+                    Rectangle:
+                        pos: self.pos
+                        size: self.size
+            BoxLayout:
+                orientation: 'vertical'
+                size_hint_x: None
+                width: 180
+                spacing: 4
+                BoxLayout:
+                    id: palette_box
+                    orientation: 'vertical'
+                    spacing: 2
+        BoxLayout:
+            size_hint_y: None
+            height: 40
+            spacing: 10
+            padding: [4, 4]
+            Button:
+                id: undo_btn
+                text: 'Undo'
+                size_hint_x: None
+                width: 80
+                disabled: True
+                on_release: root.on_undo()
+            Button:
+                id: redo_btn
+                text: 'Redo'
+                size_hint_x: None
+                width: 80
+                disabled: True
+                on_release: root.on_redo()
+            Button:
+                text: 'New'
+                size_hint_x: None
+                width: 60
+                background_color: (0.2, 0.3, 0.5, 1)
+                on_release: root.on_new()
+            BoxLayout:
+                size_hint_x: 1
+            Button:
+                id: save_btn
+                text: 'Save'
+                size_hint_x: None
+                width: 100
+                background_color: (0.2, 0.5, 0.2, 1)
+                on_release: root.on_save()
+            Button:
+                id: delete_btn
+                text: 'Delete'
+                size_hint_x: None
+                width: 80
+                background_color: (0.6, 0.1, 0.1, 1)
+                on_release: root.on_delete()

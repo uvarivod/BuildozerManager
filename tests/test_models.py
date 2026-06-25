@@ -48,7 +48,7 @@ class TestAction:
         assert Action.CLEAN.name == "CLEAN"
         assert Action.BUILD.name == "BUILD"
         assert Action.PATCH.name == "PATCH"
-        assert Action.DOWNLOAD.name == "DOWNLOAD"
+        assert Action.PULL_APK.name == "PULL_APK"
         assert Action.RUN.name == "RUN"
 
     def test_all_enum_values_unique(self):

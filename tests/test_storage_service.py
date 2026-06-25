@@ -3,7 +3,9 @@ from pathlib import Path
 
 import pytest
 
+from src.models.action import Action
 from src.models.profile import Profile
+from src.models.scenario import Scenario
 from src.services import storage_service
 
 
@@ -133,12 +135,65 @@ class TestScenarioStore:
         assert scenarios == []
 
     def test_save_and_load(self, temp_data_dir):
-        data = [{"name": "scenario1", "actions": ["BUILD"]}]
-        storage_service.ScenarioStore.save_all(data)
+        scenario = Scenario(
+            name="scenario1",
+            description="test desc",
+            action_sequence=[Action.BUILD],
+            stop_on_failure=True,
+        )
+        storage_service.ScenarioStore.save_all([scenario])
         loaded = storage_service.ScenarioStore.load_all()
-        assert loaded == data
+        assert len(loaded) == 1
+        assert loaded[0].name == "scenario1"
+        assert loaded[0].description == "test desc"
+        assert loaded[0].action_sequence == [Action.BUILD]
 
     def test_load_returns_list_only(self, temp_data_dir):
         (temp_data_dir / "scenarios.json").write_text('{"invalid": true}', encoding="utf-8")
         loaded = storage_service.ScenarioStore.load_all()
         assert loaded == []
+
+    def test_save_individual(self, temp_data_dir):
+        scenario = Scenario(name="s1", description="d1", action_sequence=[Action.CLEAN])
+        storage_service.ScenarioStore.save(scenario)
+        loaded = storage_service.ScenarioStore.load_all()
+        assert len(loaded) == 1
+        assert loaded[0].name == "s1"
+
+    def test_save_updates_existing(self, temp_data_dir):
+        s1 = Scenario(name="s1", description="old", action_sequence=[Action.CLEAN])
+        storage_service.ScenarioStore.save(s1)
+        s1.description = "updated"
+        storage_service.ScenarioStore.save(s1)
+        loaded = storage_service.ScenarioStore.load_all()
+        assert len(loaded) == 1
+        assert loaded[0].description == "updated"
+
+    def test_delete_scenario(self, temp_data_dir):
+        s1 = Scenario(name="s1", action_sequence=[Action.BUILD])
+        s2 = Scenario(name="s2", action_sequence=[Action.CLEAN])
+        storage_service.ScenarioStore.save_all([s1, s2])
+        storage_service.ScenarioStore.delete("s1")
+        loaded = storage_service.ScenarioStore.load_all()
+        assert len(loaded) == 1
+        assert loaded[0].name == "s2"
+
+    def test_get_scenario_by_name(self, temp_data_dir):
+        s1 = Scenario(name="s1", action_sequence=[Action.BUILD])
+        storage_service.ScenarioStore.save(s1)
+        result = storage_service.ScenarioStore.get("s1")
+        assert result is not None
+        assert result.name == "s1"
+        assert storage_service.ScenarioStore.get("nonexistent") is None
+
+    def test_load_missing_file(self, temp_data_dir):
+        loaded = storage_service.ScenarioStore.load_all()
+        assert loaded == []
+
+    def test_description_defaults_to_empty(self, temp_data_dir):
+        scenario = Scenario(name="s1", action_sequence=[Action.RUN])
+        assert scenario.description == ""
+        storage_service.ScenarioStore.save(scenario)
+        loaded = storage_service.ScenarioStore.get("s1")
+        assert loaded is not None
+        assert loaded.description == ""
