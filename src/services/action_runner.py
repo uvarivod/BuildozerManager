@@ -61,6 +61,7 @@ class ActionRunner:
     def run_action(
         self, action: Action, profile: Profile,
         on_state_change: Callable[[ActionState], None] | None = None,
+        script_path: str | None = None,
     ) -> ActionState:
         self.reset_cancel()
         if on_state_change:
@@ -84,6 +85,8 @@ class ActionRunner:
             return self._run_pull_apk(profile, log_cb)
         elif action == Action.RUN:
             return self._run_launch(profile, log_cb)
+        elif action == Action.CUSTOM_SCRIPT:
+            return self._run_custom_script(script_path or "", log_cb)
         return ActionState.FAILED
 
     def _run_sync_src(self, profile: Profile, log_cb) -> ActionState:
@@ -149,6 +152,43 @@ class ActionRunner:
 
         result = self._patches.apply_patches([patch_name], buildozer_path, log_cb, profile=profile)
         return ActionState.SUCCESS if result else ActionState.FAILED
+
+    def _run_custom_script(self, script_path: str, log_cb) -> ActionState:
+        log_cb("info", f"Starting custom script: {script_path}")
+        if not script_path:
+            log_cb("error", "No script path specified")
+            return ActionState.FAILED
+        script = Path(script_path)
+        if not script.is_file():
+            log_cb("error", f"Script not found: {script_path}")
+            return ActionState.FAILED
+        import subprocess
+        try:
+            result = subprocess.run(
+                ["cmd.exe", "/c", str(script)],
+                capture_output=True,
+                text=True,
+                timeout=3600,
+            )
+            out = (result.stdout or "").strip()
+            err = (result.stderr or "").strip()
+            err_lines = [l for l in err.split('\n') if l and 'Input redirection is not supported' not in l]
+            if out:
+                log_cb("info", out)
+            if err_lines:
+                log_cb("warn", '\n'.join(err_lines))
+            if result.returncode == 0:
+                log_cb("success", f"Script completed with return code 0")
+                return ActionState.SUCCESS
+            else:
+                log_cb("error", f"Script failed with return code {result.returncode}")
+                return ActionState.FAILED
+        except subprocess.TimeoutExpired:
+            log_cb("error", "Script timed out after 3600 seconds")
+            return ActionState.FAILED
+        except Exception as e:
+            log_cb("error", f"Script execution error: {e}")
+            return ActionState.FAILED
 
     def _run_pull_apk(self, profile: Profile, log_cb) -> ActionState:
         spec_path = Path(profile.sourcedir) / "buildozer.spec"

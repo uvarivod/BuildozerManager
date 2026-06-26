@@ -8,6 +8,7 @@ class Action(Enum):
     PATCH = auto()
     PULL_APK = auto()
     RUN = auto()
+    CUSTOM_SCRIPT = auto()
 
     @property
     def description(self) -> str:
@@ -21,6 +22,7 @@ _ACTION_DESCRIPTIONS: dict[Action, str] = {
     Action.PATCH: "Apply patches to .buildozer",
     Action.PULL_APK: "Download APK from WSL",
     Action.RUN: "Install and run APK on device",
+    Action.CUSTOM_SCRIPT: "Run a custom script",
 }
 
 
