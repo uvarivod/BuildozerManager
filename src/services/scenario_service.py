@@ -3,7 +3,9 @@ from datetime import datetime
 
 from src.models.action import Action, ActionState
 from src.models.scenario import Scenario, ScenarioRun
+from src.models.custom_action import CustomAction
 from src.services.action_runner import ActionRunner
+from src.services.storage_service import CustomActionStore
 from src.services.log_service import LogService, LogLevel
 
 
@@ -91,9 +93,17 @@ class ScenarioService:
                 continue
 
             cb("info", f"Running action: {action.name}")
+            script_path = None
+            if action == Action.CUSTOM_SCRIPT:
+                ca_name = scenario.custom_action_names.get(i)
+                if ca_name:
+                    script_path = next(
+                        (ca.logic for ca in CustomActionStore.load_all() if ca.name == ca_name),
+                        None,
+                    )
             if on_action_state_change:
                 on_action_state_change(i, ActionState.RUNNING)
-            state = self._runner.run_action(action, profile)
+            state = self._runner.run_action(action, profile, script_path=script_path)
             run.per_action_status[action.name] = state
             cb("info", f"Action {action.name} finished: {state.name}")
             if on_action_state_change:

@@ -10,7 +10,7 @@ from src.screens.action_card import ActionCard, PatchCard
 from src.services.action_runner import ActionRunner
 from src.services.scenario_service import ScenarioService
 from src.services.log_service import LogService
-from src.services.storage_service import ProfileStore, ScenarioStore, SettingsStore
+from src.services.storage_service import ProfileStore, ScenarioStore, SettingsStore, CustomActionStore
 
 
 class ActionsScreen(Screen):
@@ -79,6 +79,18 @@ class ActionsScreen(Screen):
     def on_enter(self, *args):
         self._refresh_scenarios()
         self._refresh_profile_spinner()
+        if self._active_profile:
+            profiles = ProfileStore.load_all()
+            for p in profiles:
+                if p.name == self._active_profile.name:
+                    self._active_profile = p
+                    break
+        if self._current_scenario:
+            for s in self._scenarios:
+                if s.name == self._current_scenario.name:
+                    self._current_scenario = s
+                    break
+            self._build_action_chain(self._current_scenario)
 
     def _refresh_profile_spinner(self):
         profiles = ProfileStore.load_all()
@@ -173,6 +185,23 @@ class ActionsScreen(Screen):
             return
         scenario = next((s for s in self._scenarios if s.name == text), None)
         if scenario:
+            if scenario.custom_action_names:
+                custom_actions = CustomActionStore.load_all()
+                ca_names = {ca.name for ca in custom_actions}
+                missing = sorted(set(name for name in scenario.custom_action_names.values() if name not in ca_names))
+                if missing:
+                    msg = f"Scenario '{scenario.name}' references missing actions:\n" + "\n".join(f"  - {name}" for name in missing)
+                    from kivy.uix.popup import Popup
+                    from kivy.uix.boxlayout import BoxLayout
+                    from kivy.uix.button import Button
+                    content = BoxLayout(orientation="vertical", spacing=10, padding=10)
+                    content.add_widget(Label(text=msg, font_size="11sp"))
+                    btn_box = BoxLayout(spacing=10, size_hint_y=None, height=40)
+                    popup = Popup(title="Missing Actions", content=content, size_hint=(0.45, 0.3))
+                    btn_box.add_widget(Button(text="OK", on_release=lambda *_: popup.dismiss()))
+                    content.add_widget(btn_box)
+                    popup.open()
+                    return
             self._current_scenario = scenario
             self._build_action_chain(scenario)
 
@@ -196,7 +225,16 @@ class ActionsScreen(Screen):
                 )
                 self.chain_container.add_widget(arrow)
 
-            if action == Action.PATCH and self._active_profile:
+            if action == Action.CUSTOM_SCRIPT:
+                display_name = scenario.custom_action_names.get(i, "Custom Script")
+                card = ActionCard(
+                    action=action,
+                    on_card_click=self._on_action_card_click,
+                    allow_click=self.allow_separate_execution,
+                )
+                card.action_name = display_name
+                card.description = scenario.custom_action_names.get(i, "")
+            elif action == Action.PATCH and self._active_profile:
                 card = PatchCard(
                     action=action,
                     on_card_click=self._on_action_card_click,
@@ -232,8 +270,22 @@ class ActionsScreen(Screen):
                     card_index = i
                     break
 
-        self._log.info(f"Starting {action.name}...")
-        self.status_label = f"Running: {action.name}"
+        script_path = None
+        action_name = action.name
+        if action == Action.CUSTOM_SCRIPT and self._current_scenario and hasattr(self, "_action_cards"):
+            if 0 <= card_index < len(self._action_cards):
+                card = self._action_cards[card_index]
+                action_name = card.action_name
+            if self._current_scenario.custom_action_names:
+                ca_name = self._current_scenario.custom_action_names.get(card_index, "")
+                custom_actions = CustomActionStore.load_all()
+                for ca in custom_actions:
+                    if ca.name == ca_name:
+                        script_path = ca.logic
+                        break
+
+        self._log.info(f"Starting {action_name}...")
+        self.status_label = f"Running: {action_name}"
         self.is_running = True
         self._disable_controls()
         self._run_counter += 1
@@ -249,7 +301,7 @@ class ActionsScreen(Screen):
         def run():
             if card_index >= 0:
                 self._on_action_state_change(card_index, ActionState.RUNNING)
-            state = self._runner.run_action(action, self._active_profile, on_state_change=on_state_change)
+            state = self._runner.run_action(action, self._active_profile, on_state_change=on_state_change, script_path=script_path)
             Clock.schedule_once(lambda dt: self._on_action_done(action, state, run_id), 0)
 
         import threading

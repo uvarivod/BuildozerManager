@@ -9,8 +9,9 @@ from kivy.uix.checkbox import CheckBox
 from kivy.uix.label import Label
 
 from src.models.patch import PatchRegistry
+from src.models.custom_action import CustomAction, ActionType
 from src.models.profile import Profile
-from src.services.storage_service import ProfileStore, SettingsStore
+from src.services.storage_service import ProfileStore, SettingsStore, CustomActionStore
 from src.services.log_service import LogService
 
 
@@ -44,26 +45,73 @@ class ProfileEditorScreen(Screen):
 
         selected = set()
         if self._editing_profile:
+            profiles = ProfileStore.load_all()
+            for p in profiles:
+                if p.name == self._editing_profile.name:
+                    self._editing_profile = p
+                    break
             selected = set(self._editing_profile.patches)
 
         for patch in PatchRegistry.list_patches():
-            row = BoxLayout(size_hint_y=None, height=28, spacing=4, padding=[4, 0])
-            cb = CheckBox(active=patch.name in selected, size_hint_x=None, width=28)
-            desc = f" ({patch.description})" if patch.description else ""
-            lbl = Label(
-                text=f"{patch.name}{desc}",
-                font_size="11sp",
-                color=(0.8, 0.8, 0.8, 1),
-                halign="left",
-                valign="middle",
-            )
-            row.bind(size=lambda inst, sz, lb=lbl: setattr(lb, 'text_size', (max(sz[0] - 36, 0), None)))
-            row.add_widget(cb)
-            row.add_widget(lbl)
-            self.patches_container.add_widget(row)
-            self._patch_checkboxes[patch.name] = cb
+            self._add_patch_row(patch.name, patch.description, selected)
+
+        custom_patches = [ca for ca in CustomActionStore.load_all() if ca.type == ActionType.PATCH]
+        for ca in custom_patches:
+            self._add_patch_row(ca.name, ca.description, selected)
+
+    def _add_patch_row(self, name: str, description: str, selected: set):
+        row = BoxLayout(size_hint_y=None, height=28, spacing=4, padding=[4, 0])
+        cb = CheckBox(active=name in selected, size_hint_x=None, width=28)
+        desc = f" ({description})" if description else ""
+        lbl = Label(
+            text=f"{name}{desc}",
+            font_size="11sp",
+            color=(0.8, 0.8, 0.8, 1),
+            halign="left",
+            valign="middle",
+        )
+        row.bind(size=lambda inst, sz, lb=lbl: setattr(lb, 'text_size', (max(sz[0] - 36, 0), None)))
+        row.add_widget(cb)
+        row.add_widget(lbl)
+        self.patches_container.add_widget(row)
+        self._patch_checkboxes[name] = cb
+
+    def _remove_missing_patches(self, profile: Profile, missing: list[str]):
+        profile.patches = [p for p in profile.patches if p not in missing]
+        profiles = ProfileStore.load_all()
+        profiles = [p for p in profiles if p.name != profile.name]
+        profiles.append(profile)
+        ProfileStore.save_all(profiles)
 
     def load_profile(self, profile: Profile):
+        profiles = ProfileStore.load_all()
+        for p in profiles:
+            if p.name == profile.name:
+                profile = p
+                break
+        if profile.patches:
+            registry_names = {p.name for p in PatchRegistry.list_patches()}
+            custom_patch_names = {ca.name for ca in CustomActionStore.load_all() if ca.type == ActionType.PATCH}
+            available = registry_names | custom_patch_names
+            missing = [p for p in profile.patches if p not in available]
+            if missing:
+                from kivy.uix.popup import Popup
+                from kivy.uix.button import Button
+                msg = (f"Profile '{profile.name}' references missing patches:\n" +
+                       "\n".join(f"  - {p}" for p in missing) +
+                       "\n\nThey will be removed automatically.")
+                content = BoxLayout(orientation="vertical", spacing=10, padding=10)
+                content.add_widget(Label(text=msg, font_size="11sp"))
+                btn_box = BoxLayout(spacing=10, size_hint_y=None, height=40)
+                popup = Popup(title="Missing Patches", content=content, size_hint=(0.45, 0.35))
+                def on_ok(*_):
+                    self._remove_missing_patches(profile, missing)
+                    self._build_patch_selector()
+                    popup.dismiss()
+                btn_box.add_widget(Button(text="OK", on_release=on_ok))
+                content.add_widget(btn_box)
+                popup.open()
+
         self._editing_profile = profile
         self._orig_name = profile.name
         self.name_input.text = profile.name

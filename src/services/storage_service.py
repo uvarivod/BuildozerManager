@@ -109,10 +109,13 @@ class ScenarioStore:
                         sequence.append(Action[name])
                     except KeyError:
                         pass
+                custom_names = item.get("custom_action_names", {})
+                custom_names = {int(k): v for k, v in custom_names.items()}
                 result.append(Scenario(
                     name=item.get("name", ""),
                     description=item.get("description", ""),
                     action_sequence=sequence,
+                    custom_action_names=custom_names,
                     stop_on_failure=item.get("stop_on_failure", True),
                     is_predefined=False,
                 ))
@@ -127,6 +130,7 @@ class ScenarioStore:
                 "name": s.name,
                 "description": s.description,
                 "action_sequence": [a.name for a in s.action_sequence],
+                "custom_action_names": {str(k): v for k, v in s.custom_action_names.items()},
                 "stop_on_failure": s.stop_on_failure,
             }
             for s in scenarios
@@ -153,6 +157,63 @@ class ScenarioStore:
     def get(name: str) -> Scenario | None:
         scenarios = ScenarioStore.load_all()
         return next((s for s in scenarios if s.name == name), None)
+
+
+class CustomActionStore:
+
+    @staticmethod
+    def load_all() -> list:
+        from src.models.custom_action import CustomAction, ActionType
+        data = _read_json("custom_actions.json")
+        if not isinstance(data, list):
+            return []
+        result = []
+        for item in data:
+            try:
+                type_val = ActionType[item.get("type", "ACTION")]
+                result.append(CustomAction(
+                    id=item.get("id", ""),
+                    name=item.get("name", ""),
+                    description=item.get("description", ""),
+                    type=type_val,
+                    logic=item.get("logic", ""),
+                    is_builtin=item.get("is_builtin", False),
+                ))
+            except Exception:
+                continue
+        return result
+
+    @staticmethod
+    def save_all(actions: list):
+        from src.models.custom_action import ActionType
+        _write_json("custom_actions.json", [
+            {
+                "id": a.id,
+                "name": a.name,
+                "description": a.description,
+                "type": a.type.name,
+                "logic": a.logic,
+                "is_builtin": a.is_builtin,
+            }
+            for a in actions
+        ])
+
+    @staticmethod
+    def save(action) -> None:
+        actions = CustomActionStore.load_all()
+        for i, a in enumerate(actions):
+            if a.id == action.id:
+                actions[i] = action
+                break
+        else:
+            actions.append(action)
+        CustomActionStore.save_all(actions)
+
+    @staticmethod
+    def delete(action_id: str) -> None:
+        actions = CustomActionStore.load_all()
+        actions = [a for a in actions if a.id != action_id]
+        CustomActionStore.save_all(actions)
 
 
 class SettingsStore:
