@@ -7,7 +7,7 @@ Locate the built APK file in the WSL `bin/` directory by matching the expected f
 ## Requirements
 
 ### Requirement: System can find the APK in WSL matching buildozer.spec
-The system SHALL locate the APK by searching `wsl_dir/bin/` (the Buildozer output directory, not `.buildozer/bin/`) for `*.apk` files whose stem starts with `<package.name>-<version>-`. The version is parsed from `buildozer.spec` (method 1: `version = X.Y.Z` line, or method 2: `version.regex` + `version.filename`). If no match with version, falls back to `<package.name>-` prefix. Among matching files, the newest by modification time is selected. The expected filename format is `<package.name>-<version>-<android.archs>-<debug/release>.apk`, where multiple archs are joined by `_`.
+The system SHALL locate the APK by searching `wsl_dir/bin/` (the Buildozer output directory, not `.buildozer/bin/`) for `*.apk` files whose stem starts with `<package.name>-<version>-`. The search is performed via the Windows network path (`\\wsl$\<distro>\<dir>\bin`), not via a WSL command. The version is parsed from `buildozer.spec` (method 1: `version = X.Y.Z` line, or method 2: `version.regex` + `version.filename`). If no match with version, falls back to `<package.name>-` prefix. Among matching files, the newest by modification time is selected. The expected filename format is `<package.name>-<version>-<android.archs>-<debug/release>.apk`, where multiple archs are joined by `_`.
 
 #### Scenario: Find APK matching spec with version
 - **WHEN** a buildozer build has completed with `package.name = myapp` and `version = 1.1.0`

@@ -31,7 +31,7 @@ The system SHALL prepend each log line with `[YYYY-MM-DD HH:MM:SS]` timestamp.
 - **THEN** it is displayed as `[2026-06-17 11:30:00] Starting build...`
 
 ### Requirement: Execution duration is shown
-The system SHALL display the elapsed time since the current action/scenario started, updated every second.
+The system SHALL display the elapsed time since the current action/scenario started, updated every 0.5 seconds.
 
 #### Scenario: Duration display
 - **WHEN** an action has been running for 2 minutes 30 seconds

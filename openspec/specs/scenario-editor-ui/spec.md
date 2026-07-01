@@ -13,15 +13,15 @@ The system SHALL provide a Scenario Editor screen with three visual panels: a sc
 - **WHEN** the user opens the Scenario Editor
 - **THEN** they see a scenario list panel (left), an action sequence editor (center), and an actions palette (right)
 - **THEN** the palette shows "Available Actions" and "Available Patches" headers
-- **THEN** each panel is separated by a visible divider
+- **THEN** the palette sections have bold headers but no visible divider between panels
 
 ### Requirement: Scenario list panel shows all scenarios
-The left panel SHALL list all scenarios (predefined and user-defined). Predefined scenarios SHALL show a lock icon and be visually distinct (e.g., grayed label, italic). User scenarios SHALL show a delete button on hover/select.
+The left panel SHALL list all scenarios (predefined and user-defined). Predefined scenarios SHALL show a `[R]` prefix and be visually distinct (dimmer background color). User scenarios SHALL show a delete button on hover/select.
 
 #### Scenario: Scenario list with predefined and user scenarios
 - **WHEN** the user opens the Scenario Editor
 - **THEN** the left panel shows all scenarios by name
-- **THEN** predefined scenarios display a lock icon and are visually distinct
+- **THEN** predefined scenarios display a `[R]` prefix and have a dimmer background
 - **THEN** user scenarios show a delete (X) button when selected
 
 ### Requirement: Selecting a scenario loads it for editing
@@ -67,17 +67,16 @@ Clicking any palette chip (built-in or custom) SHALL open an edit dialog showing
 - **THEN** a popup opens displaying the action's Name, Description, Type, and Logic
 
 ### Requirement: Drag-and-drop adds actions to sequence
-The user SHALL be able to drag an action chip from the palette and drop it at a specific position in the sequence editor. A visual insertion indicator (line) SHALL show where the action will be placed during drag.
+The user SHALL be able to drag an action chip from the palette and drop it at a specific position in the sequence editor. A ghost button follows the cursor during drag.
 
 #### Scenario: Drag action from palette to sequence
 - **WHEN** the user drags a "BUILD" chip from the palette to between positions 2 and 3 in the sequence
-- **THEN** a horizontal insertion line appears between positions 2 and 3
 - **WHEN** the user releases the drag
 - **THEN** a BUILD action is inserted at position 3
 - **THEN** the sequence display updates with the new "->" separator
 
 ### Requirement: Drag-and-drop reorders actions within sequence
-The user SHALL be able to drag an action card within the sequence to a new position. The card SHALL visually lift during drag, and an insertion indicator SHALL show the target position.
+The user SHALL be able to drag an action card within the sequence to a new position. The card SHALL visually lift during drag.
 
 #### Scenario: Reorder action in sequence
 - **WHEN** the user drags the action at position 4 to position 1
@@ -98,16 +97,16 @@ The user SHALL be able to remove an action from the sequence either by dragging 
 - **THEN** the sequence display updates
 
 ### Requirement: Undo and Redo for all editing operations
-All editing operations (add, remove, reorder, rename, update description) SHALL support undo and redo via Ctrl+Z / Ctrl+Shift+Z and toolbar buttons. The undo stack SHALL hold up to 50 operations. The toolbar buttons SHALL disable when no undo/redo actions are available.
+All editing operations (add, remove, reorder, rename, update description) SHALL support undo and redo via toolbar buttons. The undo stack SHALL hold up to 50 operations. The toolbar buttons SHALL disable when no undo/redo actions are available.
 
 #### Scenario: Undo an action addition
 - **WHEN** the user adds a BUILD action to the sequence
-- **WHEN** the user presses Ctrl+Z
+- **WHEN** the user clicks the Undo toolbar button
 - **THEN** the BUILD action is removed (sequence reverts to prior state)
 
 #### Scenario: Redo after undo
 - **WHEN** the user undoes an action addition
-- **WHEN** the user presses Ctrl+Shift+Z
+- **WHEN** the user clicks the Redo toolbar button
 - **THEN** the BUILD action is re-added to the sequence
 
 ### Requirement: Scenario name and description are editable
@@ -115,7 +114,7 @@ The center panel SHALL show editable text fields for scenario name and descripti
 
 #### Scenario: Edit scenario name
 - **WHEN** the user changes the scenario name from "My Build" to "My Custom Build"
-- **WHEN** the user presses Ctrl+Z
+- **WHEN** the user clicks Undo
 - **THEN** the name reverts to "My Build"
 
 ### Requirement: Save persists the scenario

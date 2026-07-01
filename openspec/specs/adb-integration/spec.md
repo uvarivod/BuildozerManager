@@ -24,17 +24,17 @@ The system SHALL run `adb devices -l` to list connected Android devices, display
 - **THEN** the system logs each connected device with its serial and state
 - **THEN** the system logs the total device count
 
-### Requirement: User can select a target device when multiple are connected
-When multiple ADB devices are connected, the system SHALL prompt the user to select which device to install and launch onto.
+### Requirement: System uses first device when multiple are connected
+When multiple ADB devices are connected, the system SHALL log all detected devices and use the first one, logging a message: "Multiple devices detected — using first: {serial}". No device selection popup is shown.
 
-#### Scenario: Device selection popup
+#### Scenario: Multiple devices use first
 - **WHEN** the Run action detects 2+ connected devices
-- **THEN** a device selection popup lists all connected devices by serial number
-- **THEN** the selected device receives the APK installation and launch commands
+- **THEN** the system logs each device serial and state
+- **THEN** the system uses the first device without prompting the user
 
-#### Scenario: Single device skips selection
+#### Scenario: Single device proceeds directly
 - **WHEN** exactly one device is connected
-- **THEN** the system proceeds without a selection popup
+- **THEN** the system proceeds without selection
 
 ### Requirement: System can install APK on connected device via ADB
 The system SHALL install the downloaded APK onto the first connected device using `adb install -r`.

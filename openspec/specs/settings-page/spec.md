@@ -6,13 +6,13 @@ TBD
 
 ## Requirements
 
-### Requirement: Settings screen is accessible from bottom navigation
-The system SHALL provide a Settings screen accessible via a "Settings" button in the bottom navigation bar.
+### Requirement: Settings screen is accessible from Actions screen top bar
+The system SHALL provide a Settings screen accessible via a "Settings" button in the Actions screen top toolbar, between the Scenarios and Help buttons.
 
 #### Scenario: Navigate to settings
-- **WHEN** the user clicks the "Settings" button in the bottom nav
+- **WHEN** the user clicks the "Settings" button in the Actions screen top bar
 - **THEN** the Settings screen is displayed
-- **THEN** a "Back" or navigation button returns to the previous screen
+- **THEN** a "Back" button returns to the Actions screen
 
 ### Requirement: User can configure log directory path
 The system SHALL allow the user to set the directory path where log files are saved.

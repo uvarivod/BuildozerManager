@@ -27,11 +27,11 @@ The system SHALL include exactly two built-in scenarios: "Full Clean build" and 
 - **THEN** the system runs RUN (install APK via ADB and launch on device)
 
 ### Requirement: Scenario runner accepts a skip mask
-The system SHALL accept an optional `skip_actions` parameter (a set of Action enums) in the `run_scenario` method. Actions in this set SHALL be skipped during execution — their state SHALL be recorded as "Skipped" and the runner SHALL proceed to the next action.
+The system SHALL accept an optional `skip_indices` parameter (a set of integer indices) in the `run_scenario` method. Actions matching these indices SHALL be skipped during execution — their state SHALL be recorded as "Skipped" and the runner SHALL proceed to the next action.
 
 #### Scenario: Skip actions during scenario run
 - **WHEN** the user selects "Full Clean build"
-- **WHEN** the skip mask contains `{Action.PATCH}`
+- **WHEN** the skip mask contains `{3}` (the PATCH index)
 - **WHEN** the user clicks "Run Scenario"
 - **THEN** the runner skips PATCH but executes all other actions (CLEAN, SYNC_SRC, BUILD, BUILD, PULL_APK, RUN) in order
 - **THEN** PATCH is recorded with status "Skipped"
@@ -75,10 +75,5 @@ Predefined scenarios ("Full Clean build", "Rebuild") SHALL NOT be editable or de
 - **THEN** name and description fields are read-only
 - **THEN** the delete button is hidden
 
-### Requirement: User scenarios override predefined names
-If a user creates a scenario with the same name as a predefined scenario, the predefined version SHALL continue to exist in `ScenarioService.get_predefined_scenarios()` while the user version is stored separately in `ScenarioStore`. The scenario selector SHALL show both, distinguished by their source.
-
-#### Scenario: Same name in user and predefined
-- **WHEN** the user creates a scenario named "Full Clean build"
-- **THEN** both the predefined "Full Clean build" and the user "Full Clean build" appear in the scenario list
-- **THEN** they are visually distinguished (e.g., "(predefined)" / "(custom)" suffix)
+### Requirement: User scenarios and predefined scenarios coexist
+If a user creates a scenario with the same name as a predefined scenario, the predefined version SHALL continue to exist in `ScenarioService.get_predefined_scenarios()` while the user version is stored separately in `ScenarioStore`. Both appear in the scenario list and selector without source suffixes.

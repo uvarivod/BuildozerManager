@@ -10,12 +10,13 @@ Define how PATCH actions execute patches sequentially during scenario runs and p
 The PATCH action in a scenario SHALL execute all patches associated with the current profile (`profile.patches`) sequentially.
 Each patch SHALL be applied via `PatchService.apply_patches([patch_name], ...)`.
 If `profile.patches` is empty, the PATCH action SHALL be skipped with a log message.
-The per-patch execution status SHALL be tracked and reported in the scenario run results.
+The overall PATCH action result (success/failure) SHALL be reported in the scenario run results.
 
 #### Scenario: PATCH action in scenario with 3 patches
 - **WHEN** a scenario with a PATCH action runs against a profile with 3 patches selected
 - **THEN** all 3 patches SHALL execute sequentially
 - **AND** the scenario run SHALL log each patch start/end with success/failure
+- **AND** the overall PATCH action state is SUCCESS if all patches succeed, FAILED if any patch fails
 
 #### Scenario: PATCH action with no patches selected
 - **WHEN** a scenario with a PATCH action runs against a profile with an empty patches list

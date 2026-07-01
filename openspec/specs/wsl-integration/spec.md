@@ -45,11 +45,11 @@ The system SHALL run `buildozer` commands inside the configured WSL distribution
 - **THEN** the system uses `wsl.exe --distribution Ubuntu-22.04` for all WSL commands
 
 ### Requirement: WSLService provides sync_src method
-The system SHALL provide a `sync_src()` method on WSLService that deletes all files in the WSL project directory except `.buildozer` (hardcoded) and the profile's Retain During Sync items, then copies source files from the local sourcedir.
+The system SHALL provide a `sync_src()` method on WSLService that deletes all files in the WSL project directory except `.buildozer` (hardcoded) and the profile's `delete_exclusions` items, then copies source files from the local sourcedir.
 
 #### Scenario: SyncSRC preserves .buildozer and user exclusions
 - **WHEN** `sync_src()` is called with a valid profile
-- **THEN** the WSL project directory is cleared of all files except `.buildozer` and items in the profile's Retain During Sync list
+- **THEN** the WSL project directory is cleared of all files except `.buildozer` and items in the profile's delete_exclusions list
 - **THEN** source files from `profile.sourcedir` are copied to the WSL project directory
 
 ### Requirement: WSLService provides clean_wsl_project method
@@ -60,11 +60,11 @@ The system SHALL provide a `clean_wsl_project()` method on WSLService that delet
 - **THEN** all files in the WSL project directory including `.buildozer` are deleted
 
 ### Requirement: System reports WSL connectivity status
-The system SHALL check if the configured WSL distribution is running before executing any WSL commands.
+The system SHALL check if the configured WSL distribution is running before executing SYNC_SRC, CLEAN, or BUILD actions. This check is NOT performed for PATCH actions.
 
 #### Scenario: WSL not running
-- **WHEN** WSL is not running and the user starts an action
-- **THEN** the system shows an error message: "WSL distribution '<name>' is not running. Please start it."
+- **WHEN** WSL is not running and the user starts a SYNC_SRC, CLEAN, or BUILD action
+- **THEN** the system shows an error message: "WSL is not running"
 - **THEN** the action is not executed
 
 #### Scenario: WSL is running

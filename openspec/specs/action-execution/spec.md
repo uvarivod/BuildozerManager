@@ -7,11 +7,11 @@ Execute build pipeline actions (Clean, Build, Pull APK, Run) with real-time stat
 ## Requirements
 
 ### Requirement: User can execute the Clean action
-The system SHALL delete all files and folders in the WSL working directory, except those in the deletion exclusion list.
+The system SHALL delete ALL files and folders in the WSL working directory, including `.buildozer`.
 
 #### Scenario: Clean with exclusions
-- **WHEN** the user runs Clean on a profile with ".buildozer" excluded
-- **THEN** the WSL working directory is emptied except for the .buildozer directory
+- **WHEN** the user runs Clean
+- **THEN** the WSL working directory is completely emptied, including .buildozer
 - **THEN** the system logs each deleted file and the total operation duration
 
 #### Scenario: Clean fails validation if paths are empty
@@ -19,26 +19,20 @@ The system SHALL delete all files and folders in the WSL working directory, exce
 - **THEN** the action is rejected with a message listing missing fields
 
 ### Requirement: User can execute the Build action
-The system SHALL: warn if .buildozer is unprotected, clean (respecting Retain During Sync), copy source to WSL, then run the buildozer build command with parsed output in the WSL working directory.
+The system SHALL: sync source to WSL (via SyncSRC), then run the buildozer build command with parsed output in the WSL working directory.
 
-#### Scenario: Full build cycle with protections
-- **WHEN** the user runs Build on an active profile with .buildozer in Retain During Sync
-- **THEN** the system cleans the WSL working directory (preserving Retain During Sync items)
-- **THEN** the system copies source files from sourcedir to WSL working directory excluding excluded_files
+#### Scenario: Full build cycle
+- **WHEN** the user runs Build
+- **THEN** the system syncs source files from sourcedir to WSL working directory excluding excluded_files
 - **THEN** the system runs buildozer in WSL with proper PATH setup and parsed output logging
 - **THEN** the system shows build duration on completion
-
-#### Scenario: Build with unprotected .buildozer
-- **WHEN** the user runs Build and .buildozer is NOT in Retain During Sync
-- **THEN** a confirmation popup is shown before the action proceeds
-- **THEN** the user can choose to stop, continue, or add to exclusions
 
 #### Scenario: Build fails validation if paths are empty
 - **WHEN** the profile has empty sourcedir, spec_path, wsl_dir, or wsl_distro
 - **THEN** the action is rejected with a message listing missing fields
 
 ### Requirement: User can execute the Pull APK action
-The system SHALL locate the built APK in the WSL `bin/` directory (project-level bin, not `.buildozer/bin/`) by matching the expected filename from `buildozer.spec` and copy it to `sourcedir/bin` on Windows with detailed logging at each step.
+The system SHALL locate the built APK in the WSL `bin/` directory (project-level bin, not `.buildozer/bin/`) by matching the expected filename from `buildozer.spec` and copy it to `sourcedir/bin` on Windows with detailed logging at each step. The search is performed via the Windows network path (`\\wsl$\<distro>\<dir>\bin`), not via a WSL command.
 
 #### Scenario: Pull APK after build
 - **WHEN** the user runs Pull APK after a successful build
@@ -86,13 +80,8 @@ The system SHALL parse buildozer output lines to show meaningful progress indica
 - **WHEN** buildozer outputs `[WARN]:` lines
 - **THEN** they are logged as warning-level messages
 
-### Requirement: User is warned if .buildozer is unprotected
-Before cleaning the WSL build directory, if `.buildozer` is not in the Retain During Sync list, the system SHALL show a confirmation popup with options.
-
-#### Scenario: Missing .buildozer protection
-- **WHEN** the user clicks Build and `.buildozer` is not in Retain During Sync
-- **THEN** a popup appears: "Warning: .buildozer is not protected. This will trigger a clean build."
-- **THEN** the user can choose: "Continue", "Add to exclusions and continue", or "Stop"
+### Requirement: Build action does not check .buildozer protection
+The Build action does NOT check whether `.buildozer` is in the exclusions list and does NOT show a confirmation popup. The SyncSRC step always preserves `.buildozer` regardless.
 
 ### Requirement: Action execution emits RUNNING state
 The system SHALL emit ActionState.RUNNING when an action begins execution. The UI SHALL update the status label to reflect the current running state in real time.
@@ -128,12 +117,8 @@ The system SHALL allow cancellation of any running action via a Cancel button an
 - **THEN** the action status is set to "Cancelled"
 - **THEN** the timer stops and duration is logged with the cancellation
 
-### Requirement: Action execution is always scenario-scoped
-The system SHALL NOT expose standalone action execution buttons outside the scenario action chain. All action execution SHALL be initiated either by clicking an action card within the chain or by clicking "Run Scenario".
-
-#### Scenario: No standalone action UI
-- **WHEN** the main screen is rendered
-- **THEN** there are no buttons labeled "Sync SRC", "Clean", "Build", "Patch", "Pull APK", or "Run" outside the action chain cards
+### Requirement: Action execution is gated by "Allow running separately" flag
+The system SHALL only allow individual action execution when the "Allow running actions separately" checkbox is enabled. Action cards in the chain show clickable buttons only when this flag is checked.
 
 ### Requirement: Individual action execution honors the "allow separately" flag
 When a single action is triggered from an action card, the system SHALL check the "Allow running actions separately" flag. If disabled, the action SHALL NOT execute.

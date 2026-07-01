@@ -14,7 +14,7 @@ The system SHALL provide a "New Profile" button on the Profiles screen. Clicking
 - **THEN** an empty profile editor is shown where the user can fill in fields and click Save to create the profile
 
 ### Requirement: Profile stores all build settings
-Each profile SHALL store: name, sourcedir, buildozer spec path, adb path, excluded files/folders, WSL Build Directory, WSL Distribution name, patch list, and Retain During Sync list.
+Each profile SHALL store: name, sourcedir, buildozer spec path, adb path, excluded files/folders, WSL Build Directory, WSL Distribution name, patch list, and delete_exclusions list (items preserved during SyncSRC).
 
 #### Scenario: Edit profile settings
 - **WHEN** the user selects a profile and modifies any setting field, or clicks Browse to select a source directory, buildozer.spec, ADB path, or WSL Build Directory via the file chooser
@@ -33,17 +33,13 @@ Each profile SHALL store: name, sourcedir, buildozer spec path, adb path, exclud
 - **THEN** a file chooser dialog opens filtered to `buildozer.spec` files, pre-populated with the current source directory path (if any)
 - **THEN** selecting `buildozer.spec` fills the text input with its full path
 
-#### Scenario: Auto-detect ADB
-- **WHEN** the user has Android SDK or platform-tools on PATH
-- **THEN** the adb_path field auto-populates with the detected ADB executable location
-
 ### Requirement: WSL fields are visually grouped under a WSL Configuration section
-The profile editor SHALL display all WSL-related fields (WSL Build Directory, WSL Distribution, Retain During Sync) as a visually distinct group labeled "WSL Configuration" with a colored section header spanning the full editor width.
+The profile editor SHALL display all WSL-related fields (WSL Build Directory, WSL Distribution) as a visually distinct group labeled "WSL Related Configuration" with a colored section header spanning the full editor width.
 
 #### Scenario: WSL Configuration section rendered
 - **WHEN** the user opens the profile editor
-- **THEN** a "WSL Configuration" section header is displayed with a colored background separating WSL fields from general fields
-- **THEN** the WSL Build Directory, WSL Distribution, and Retain During Sync fields appear directly below the header
+- **THEN** a "WSL Related Configuration" section header is displayed with a colored background separating WSL fields from general fields
+- **THEN** the WSL Build Directory and WSL Distribution fields appear directly below the header
 
 ### Requirement: User can browse for WSL Build Directory
 The system SHALL provide a Browse button next to the WSL Build Directory field that opens a directory chooser dialog.
@@ -79,9 +75,9 @@ The system SHALL maintain a list of file/folder patterns excluded when copying s
 - **WHEN** the user removes a pattern from the exclusion list
 - **THEN** the pattern is no longer excluded during copy
 
-### Requirement: Retain During Sync list can be configured per profile
-The system SHALL maintain a list of files/folders in the WSL Build Directory that are preserved during the Sync SRC operation. The `.buildozer` directory is always preserved regardless of this list.
+### Requirement: delete_exclusions list can be configured per profile
+The system SHALL maintain a `delete_exclusions` list of files/folders in the WSL Build Directory that are preserved during the SyncSRC operation. The `.buildozer` directory is always preserved regardless of this list.
 
-#### Scenario: Add Retain During Sync entry
-- **WHEN** the user adds "custom_cache" to the Retain During Sync list
-- **THEN** the pattern is saved and applied during source sync operations — the file is not deleted when Sync SRC runs
+#### Scenario: Add delete_exclusions entry
+- **WHEN** the user adds "custom_cache" to the delete_exclusions list
+- **THEN** the pattern is saved and applied during source sync operations — the file is not deleted when SyncSRC runs
