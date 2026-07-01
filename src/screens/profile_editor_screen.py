@@ -1,6 +1,7 @@
 import subprocess
 
 from kivy.uix.screenmanager import Screen
+from kivy.metrics import dp
 from kivy.properties import ObjectProperty, StringProperty
 from kivy.clock import Clock
 
@@ -13,6 +14,7 @@ from src.models.custom_action import CustomAction, ActionType
 from src.models.profile import Profile
 from src.services.storage_service import ProfileStore, SettingsStore, CustomActionStore
 from src.services.log_service import LogService
+from src.screens.help_popup import show_help_popup
 
 
 class ProfileEditorScreen(Screen):
@@ -60,8 +62,8 @@ class ProfileEditorScreen(Screen):
             self._add_patch_row(ca.name, ca.description, selected)
 
     def _add_patch_row(self, name: str, description: str, selected: set):
-        row = BoxLayout(size_hint_y=None, height=28, spacing=4, padding=[4, 0])
-        cb = CheckBox(active=name in selected, size_hint_x=None, width=28)
+        row = BoxLayout(size_hint_y=None, height='28dp', spacing='4dp', padding=[dp(4), dp(0)])
+        cb = CheckBox(active=name in selected, size_hint_x=None, width='28dp')
         desc = f" ({description})" if description else ""
         lbl = Label(
             text=f"{name}{desc}",
@@ -100,9 +102,9 @@ class ProfileEditorScreen(Screen):
                 msg = (f"Profile '{profile.name}' references missing patches:\n" +
                        "\n".join(f"  - {p}" for p in missing) +
                        "\n\nThey will be removed automatically.")
-                content = BoxLayout(orientation="vertical", spacing=10, padding=10)
+                content = BoxLayout(orientation="vertical", spacing='10dp', padding='10dp')
                 content.add_widget(Label(text=msg, font_size="11sp"))
-                btn_box = BoxLayout(spacing=10, size_hint_y=None, height=40)
+                btn_box = BoxLayout(spacing='10dp', size_hint_y=None, height='40dp')
                 popup = Popup(title="Missing Patches", content=content, size_hint=(0.45, 0.35))
                 def on_ok(*_):
                     self._remove_missing_patches(profile, missing)
@@ -192,13 +194,13 @@ class ProfileEditorScreen(Screen):
         from kivy.uix.label import Label
         from kivy.uix.button import Button
 
-        content = BoxLayout(orientation="vertical", spacing=10, padding=10)
+        content = BoxLayout(orientation="vertical", spacing='10dp', padding='10dp')
         content.add_widget(
             Label(
                 text="We found buildozer.spec in the folder you chose.\nDo you want to use it?"
             )
         )
-        btn_row = BoxLayout(size_hint_y=None, height=44, spacing=10)
+        btn_row = BoxLayout(size_hint_y=None, height='44dp', spacing='10dp')
         no_btn = Button(text="No")
         yes_btn = Button(text="Yes", background_color=(0.2, 0.6, 0.2, 1))
         btn_row.add_widget(no_btn)
@@ -398,6 +400,20 @@ class ProfileEditorScreen(Screen):
 
         if self.manager:
             self.manager.current = "actions"
+
+    def show_help(self):
+        show_help_popup(
+            "Profile Editor Help",
+            "This screen lets you create and edit build profiles.\n\n"
+            "- Name: A unique identifier for this profile.\n"
+            "- Source Directory: Path to your Buildozer project folder.\n"
+            "- buildozer.spec path: Location of the buildozer.spec file.\n"
+            "- ADB path: Path to adb.exe for Android debugging.\n"
+            "- Excluded files: Files/directories to exclude (comma-separated).\n"
+            "- Patches: Select patches to apply with this profile.\n"
+            "- WSL settings: Configuration for Windows Subsystem for Linux.\n"
+            "- Click 'Save' to persist the profile, 'Cancel' to discard changes."
+        )
 
     def cancel(self):
         if self.manager:

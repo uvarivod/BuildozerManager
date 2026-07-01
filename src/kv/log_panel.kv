@@ -1,4 +1,5 @@
 #:kivy 2.3.1
+#:import dp kivy.metrics.dp
 #:import SelectableLogInput src.screens.log_panel
 
 <LogPanel>:
@@ -6,33 +7,38 @@
     log_scroll: log_scroll
     BoxLayout:
         orientation: 'vertical'
-        spacing: 4
+        spacing: '4dp'
         BoxLayout:
             size_hint_y: None
-            height: 36
-            spacing: 8
-            padding: [8, 4]
+            height: '36dp'
+            spacing: '8dp'
+            padding: [dp(8), dp(4)]
             Label:
                 text: 'Duration: ' + root.duration_label
                 size_hint_x: None
-                width: 200
+                width: '200dp'
                 halign: 'left'
             Widget:
             Button:
                 text: 'Clear'
                 size_hint_x: None
-                width: 80
+                width: '80dp'
                 on_release: root.clear_log()
             Button:
                 text: 'Save Log'
                 size_hint_x: None
-                width: 100
+                width: '100dp'
                 on_release: root.save_log()
+            Button:
+                text: '?'
+                size_hint_x: None
+                width: '30dp'
+                on_release: root.show_help()
         ScrollView:
             id: log_scroll
             do_scroll_x: False
             do_scroll_y: True
-            bar_width: 10
+            bar_width: '10dp'
             scroll_type: ['bars', 'content']
             bar_color: 0.3, 0.6, 0.9, 0.8
             bar_inactive_color: 0.3, 0.6, 0.9, 0.3
@@ -40,9 +46,9 @@
                 id: log_label
                 readonly: True
                 font_name: 'RobotoMono-Regular'
-                font_size: 11
+                font_size: '11sp'
                 size_hint_y: None
                 height: max(self.minimum_height, log_scroll.height)
-                padding: [8, 4, 8, 4]
+                padding: [dp(8), dp(4), dp(8), dp(4)]
                 background_color: 0, 0, 0, 0
                 foreground_color: 0.9, 0.9, 0.9, 1

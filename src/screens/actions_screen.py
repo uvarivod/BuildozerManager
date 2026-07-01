@@ -2,6 +2,7 @@ from kivy.uix.screenmanager import Screen
 from kivy.properties import BooleanProperty, ObjectProperty, StringProperty
 from kivy.uix.label import Label
 from kivy.clock import Clock
+from kivy.core.window import Window
 
 from src.models.action import Action, ActionState
 from src.models.profile import Profile
@@ -11,12 +12,15 @@ from src.services.action_runner import ActionRunner
 from src.services.scenario_service import ScenarioService
 from src.services.log_service import LogService
 from src.services.storage_service import ProfileStore, ScenarioStore, SettingsStore, CustomActionStore
+from src.screens.help_popup import show_help_popup
+from src.services.log_cleanup_service import cleanup_logs
 
 
 class ActionsScreen(Screen):
     log_panel = ObjectProperty(None)
     scenario_spinner = ObjectProperty(None)
     profile_spinner = ObjectProperty(None)
+    profile_btn = ObjectProperty(None)
     chain_container = ObjectProperty(None)
     status_label = StringProperty("Ready")
     is_running = BooleanProperty(False)
@@ -45,6 +49,7 @@ class ActionsScreen(Screen):
         settings = SettingsStore.load()
         saved = settings.get("allow_separate_execution", False)
         self.allow_separate_execution = saved
+        self._window_resize_timer = None
 
     def _save_separate_setting(self):
         SettingsStore.save({"allow_separate_execution": self.allow_separate_execution})
@@ -76,6 +81,36 @@ class ActionsScreen(Screen):
         if self.scenario_spinner:
             self.scenario_spinner.disabled = False
 
+    def show_help(self):
+        show_help_popup(
+            "Actions Screen Help",
+            "This is the main screen for managing your Buildozer builds.\n\n"
+            "- Select a profile from the dropdown to load your project settings.\n"
+            "- Select a scenario to run a sequence of build actions.\n"
+            "- The action chain shows each step in the selected scenario.\n"
+            "- Check 'Allow running separately' to run individual actions.\n"
+            "- Click 'Run Scenario' to execute the full chain.\n"
+            "- The log panel displays real-time output from running actions.\n"
+            "- Use SHIFT+click in the log panel to select text across multiple lines.\n"
+            "- Use 'Clear' to reset the log display, 'Save Log' to export to a file."
+        )
+
+    def _on_window_resize(self, instance, *args):
+        if self._window_resize_timer:
+            self._window_resize_timer.cancel()
+        self._window_resize_timer = Clock.schedule_once(lambda dt: self._refresh_actions_layout(), 0.2)
+
+    def _refresh_actions_layout(self):
+        if self._current_scenario:
+            self._build_action_chain(self._current_scenario)
+        self._refresh_profile_spinner()
+
+    def on_pre_enter(self, *args):
+        Window.bind(on_resize=self._on_window_resize, size=self._on_window_resize, system_size=self._on_window_resize)
+
+    def on_leave(self, *args):
+        Window.unbind(on_resize=self._on_window_resize, size=self._on_window_resize, system_size=self._on_window_resize)
+
     def on_enter(self, *args):
         self._refresh_scenarios()
         self._refresh_profile_spinner()
@@ -95,7 +130,19 @@ class ActionsScreen(Screen):
     def _refresh_profile_spinner(self):
         profiles = ProfileStore.load_all()
         if self.profile_spinner:
-            self.profile_spinner.values = [p.name for p in profiles]
+            self.profile_spinner.values = ["<new profile>"] + [p.name for p in profiles]
+        self._refresh_profile_btn()
+
+    def _refresh_profile_btn(self):
+        if not self.profile_spinner or not self.profile_btn:
+            return
+        text = self.profile_spinner.text
+        if text == "<new profile>":
+            self.profile_btn.text = "New Profile"
+        elif text and text != "Select profile":
+            self.profile_btn.text = "Edit Profile"
+        else:
+            self.profile_btn.text = "Select a profile"
 
     def set_active_profile(self, profile: Profile | None):
         self._active_profile = profile
@@ -110,9 +157,16 @@ class ActionsScreen(Screen):
                 self._build_action_chain(self._current_scenario)
         else:
             self.status_label = "No profile selected"
+        self._refresh_profile_btn()
 
     def on_profile_spinner_text(self, text: str):
         if self._updating_spinner or not text or text == "Select profile":
+            return
+        self._refresh_profile_btn()
+        if text == "<new profile>":
+            self._active_profile = None
+            self._current_scenario = None
+            self._clear_action_chain()
             return
         profiles = ProfileStore.load_all()
         profile = next((p for p in profiles if p.name == text), None)
@@ -128,9 +182,9 @@ class ActionsScreen(Screen):
         from kivy.uix.boxlayout import BoxLayout
         from kivy.uix.button import Button
 
-        content = BoxLayout(orientation="vertical", spacing=10, padding=10)
+        content = BoxLayout(orientation="vertical", spacing='10dp', padding='10dp')
         content.add_widget(Label(text=f"Delete profile '{self._active_profile.name}'?"))
-        btn_box = BoxLayout(spacing=10, size_hint_y=None, height=40)
+        btn_box = BoxLayout(spacing='10dp', size_hint_y=None, height='40dp')
         popup = Popup(title="Confirm", content=content, size_hint=(0.4, 0.3))
         btn_box.add_widget(Button(text="Cancel", on_release=lambda *_: popup.dismiss()))
         btn_box.add_widget(Button(
@@ -152,20 +206,20 @@ class ActionsScreen(Screen):
             self.profile_spinner.text = "Select profile"
         self._log.info(f"Deleted profile '{name}'")
 
-    def edit_profile(self):
-        if not self._active_profile or not self.manager:
+    def on_profile_btn(self, *args):
+        if not self.manager or "editor" not in self.manager.screen_names:
             return
         editor = self.manager.get_screen("editor")
-        if hasattr(editor, "load_profile"):
-            editor.load_profile(self._active_profile)
+        if self._active_profile:
+            if hasattr(editor, "load_profile"):
+                editor.load_profile(self._active_profile)
+        else:
+            editor.clear_fields()
         self.manager.current = "editor"
 
-    def new_profile(self):
-        if not self.manager:
-            return
-        editor = self.manager.get_screen("editor")
-        editor.clear_fields()
-        self.manager.current = "editor"
+    def open_settings(self, *args):
+        if self.manager and "settings" in self.manager.screen_names:
+            self.manager.current = "settings"
 
     def open_scenario_editor(self):
         if self.manager:
@@ -194,9 +248,9 @@ class ActionsScreen(Screen):
                     from kivy.uix.popup import Popup
                     from kivy.uix.boxlayout import BoxLayout
                     from kivy.uix.button import Button
-                    content = BoxLayout(orientation="vertical", spacing=10, padding=10)
+                    content = BoxLayout(orientation="vertical", spacing='10dp', padding='10dp')
                     content.add_widget(Label(text=msg, font_size="11sp"))
-                    btn_box = BoxLayout(spacing=10, size_hint_y=None, height=40)
+                    btn_box = BoxLayout(spacing='10dp', size_hint_y=None, height='40dp')
                     popup = Popup(title="Missing Actions", content=content, size_hint=(0.45, 0.3))
                     btn_box.add_widget(Button(text="OK", on_release=lambda *_: popup.dismiss()))
                     content.add_widget(btn_box)
@@ -209,9 +263,9 @@ class ActionsScreen(Screen):
         if self.chain_container:
             self.chain_container.clear_widgets()
 
-    def _build_action_chain(self, scenario: Scenario):
+    def _build_action_chain(self, scenario: Scenario | None = None):
         self._clear_action_chain()
-        if not self.chain_container:
+        if not self.chain_container or not scenario:
             return
         cards = []
         for i, action in enumerate(scenario.action_sequence):
@@ -219,7 +273,7 @@ class ActionsScreen(Screen):
                 arrow = Label(
                     text="->",
                     size_hint_x=None,
-                    width=24,
+                    width='24dp',
                     bold=True,
                     color=(0.6, 0.6, 0.6, 1),
                 )
@@ -358,6 +412,7 @@ class ActionsScreen(Screen):
         if card:
             card.set_patch_state(patch_name, state.name)
         self._enable_controls()
+        self._trigger_log_cleanup()
 
     def run_scenario(self):
         if not self._active_profile:
@@ -426,6 +481,13 @@ class ActionsScreen(Screen):
                     card.reset_state()
 
         self._enable_controls()
+        self._trigger_log_cleanup()
+
+    def _trigger_log_cleanup(self):
+        skip = None
+        if hasattr(self, "log_panel") and hasattr(self.log_panel, "_auto_log_path"):
+            skip = str(self.log_panel._auto_log_path)
+        cleanup_logs(skip_file=skip)
 
     def _on_scenario_done(self, run_result, run_id: int):
         if run_id != self._run_counter:
@@ -436,3 +498,4 @@ class ActionsScreen(Screen):
         self.status_label = f"Scenario: {status_str}"
         self.is_running = False
         self._enable_controls()
+        self._trigger_log_cleanup()

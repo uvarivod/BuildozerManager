@@ -1,0 +1,78 @@
+#:kivy 2.3.1
+#:import dp kivy.metrics.dp
+
+<SettingsScreen>:
+    log_dir_input: log_dir_input
+    max_log_size_input: max_log_size_input
+    BoxLayout:
+        orientation: 'vertical'
+        padding: '20dp'
+        spacing: '12dp'
+        BoxLayout:
+            size_hint_y: None
+            height: '44dp'
+            spacing: '10dp'
+            Button:
+                text: '<- Back'
+                size_hint_x: None
+                width: '100dp'
+                on_release: root.on_back()
+            Label:
+                text: 'Settings'
+                bold: True
+                font_size: '18sp'
+                halign: 'center'
+                valign: 'middle'
+            Button:
+                text: '?'
+                size_hint_x: None
+                width: '30dp'
+                on_release: root.show_help()
+        BoxLayout:
+            orientation: 'vertical'
+            spacing: '6dp'
+            padding: [dp(10), dp(10)]
+            Label:
+                text: 'Log Directory'
+                size_hint_y: None
+                height: '24dp'
+                font_size: '12sp'
+                halign: 'left'
+                valign: 'middle'
+                color: (0.8, 0.8, 0.8, 1)
+            TextInput:
+                id: log_dir_input
+                size_hint_y: None
+                height: '36dp'
+                font_size: '12sp'
+                multiline: False
+                hint_text: 'logs'
+            Label:
+                text: 'Max Log Size (MB)'
+                size_hint_y: None
+                height: '24dp'
+                font_size: '12sp'
+                halign: 'left'
+                valign: 'middle'
+                color: (0.8, 0.8, 0.8, 1)
+            TextInput:
+                id: max_log_size_input
+                size_hint_y: None
+                height: '36dp'
+                font_size: '12sp'
+                multiline: False
+                input_filter: 'int'
+                hint_text: '100'
+            Widget:
+            BoxLayout:
+                size_hint_y: None
+                height: '48dp'
+                spacing: '10dp'
+                padding: [dp(0), dp(8)]
+                Widget:
+                Button:
+                    text: 'Save'
+                    size_hint_x: None
+                    width: '160dp'
+                    background_color: 0.2, 0.6, 0.2, 1
+                    on_release: root.save()

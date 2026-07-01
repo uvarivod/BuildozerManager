@@ -1,5 +1,7 @@
 from kivy.uix.screenmanager import Screen
+from kivy.metrics import dp
 from kivy.properties import ObjectProperty, BooleanProperty, ListProperty
+from kivy.core.window import Window
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.label import Label
 from kivy.uix.button import Button
@@ -14,6 +16,7 @@ from src.models.scenario import Scenario
 from src.models.patch import PatchRegistry
 from src.services.storage_service import ScenarioStore, CustomActionStore, ProfileStore
 from src.services.scenario_service import ScenarioService
+from src.screens.help_popup import show_help_popup
 
 
 def _make_popup_label(text, **kw):
@@ -32,7 +35,7 @@ class ActionChip(Button):
         else:
             self.text = action.name.title()
         self.size_hint_y = None
-        self.height = 36
+        self.height = '36dp'
         self.font_size = "12sp"
         self.background_normal = ""
         self.background_color = (0.25, 0.25, 0.25, 1)
@@ -61,7 +64,7 @@ class ActionChip(Button):
                         self._ghost = Button(
                             text=self.text,
                             size_hint=(None, None),
-                            size=(100, 36),
+                            size=('100dp', '36dp'),
                             font_size="12sp",
                             background_color=(0.3, 0.5, 0.7, 0.8),
                         )
@@ -195,10 +198,43 @@ class ScenarioEditorScreen(Screen):
         self._drag_original_index = -1
         self._drag_render_pending = False
         super().__init__(**kwargs)
+        self._window_resize_timer = None
+
+    def _on_window_resize(self, instance, *args):
+        if self._window_resize_timer:
+            self._window_resize_timer.cancel()
+        self._window_resize_timer = Clock.schedule_once(lambda dt: self._refresh_editor_layout(), 0.2)
+
+    def _refresh_editor_layout(self):
+        if not self._current_scenario:
+            return
+        saved_name = self.name_input.text if self.name_input else self._current_scenario.name
+        saved_desc = self.desc_input.text if self.desc_input else self._current_scenario.description
+        self._build_editor_ui()
+        self._build_palette()
+        self._render_sequence()
+        if self.name_input:
+            self.name_input.text = saved_name
+            self.name_input.disabled = self._current_scenario.is_predefined
+            self.name_input.bind(text=self._on_name_changed)
+        if self.desc_input:
+            self.desc_input.text = saved_desc
+            self.desc_input.disabled = self._current_scenario.is_predefined
+            self.desc_input.bind(text=self._on_desc_changed)
+        if self.save_btn:
+            self.save_btn.disabled = self._current_scenario.is_predefined
+        if self.delete_btn:
+            self.delete_btn.disabled = self._current_scenario.is_predefined
+        self._update_undo_redo_buttons()
+        self._highlight_selected_scenario()
 
     def on_pre_enter(self, *args):
         self._reset_state()
         self._refresh_scenarios()
+        Window.bind(on_resize=self._on_window_resize, size=self._on_window_resize, system_size=self._on_window_resize)
+
+    def on_leave(self, *args):
+        Window.unbind(on_resize=self._on_window_resize, size=self._on_window_resize, system_size=self._on_window_resize)
 
     def on_kv_post(self, base_widget):
         self._build_editor_ui()
@@ -261,7 +297,7 @@ class ScenarioEditorScreen(Screen):
             btn = Button(
                 text=f"{'[!] ' if has_missing else ''}{'[R] ' if s.is_predefined else ''}{s.name}",
                 size_hint_y=None,
-                height=36,
+                height='36dp',
                 font_size="11sp",
                 halign="left",
                 valign="middle",
@@ -295,13 +331,13 @@ class ScenarioEditorScreen(Screen):
             return
         self.editor_container.clear_widgets()
 
-        header = BoxLayout(orientation="vertical", size_hint_y=None, height=170, spacing=4, padding=[8, 8])
-        name_label = Label(text="Name:", size_hint_y=None, height=20, halign="left", valign="middle", font_size="11sp", color=(0.7, 0.7, 0.7, 1))
+        header = BoxLayout(orientation="vertical", size_hint_y=None, height='170dp', spacing='4dp', padding=[dp(8), dp(8)])
+        name_label = Label(text="Name:", size_hint_y=None, height='20dp', halign="left", valign="middle", font_size="11sp", color=(0.7, 0.7, 0.7, 1))
         name_label.bind(size=lambda lbl, sz: setattr(lbl, "text_size", sz))
-        self.name_input = TextInput(size_hint_y=None, height=28, font_size="12sp", multiline=False)
-        desc_label = Label(text="Description:", size_hint_y=None, height=20, halign="left", valign="middle", font_size="11sp", color=(0.7, 0.7, 0.7, 1))
+        self.name_input = TextInput(size_hint_y=None, height='28dp', font_size="12sp", multiline=False)
+        desc_label = Label(text="Description:", size_hint_y=None, height='20dp', halign="left", valign="middle", font_size="11sp", color=(0.7, 0.7, 0.7, 1))
         desc_label.bind(size=lambda lbl, sz: setattr(lbl, "text_size", sz))
-        self.desc_input = TextInput(size_hint_y=None, height=72, font_size="12sp", multiline=True)
+        self.desc_input = TextInput(size_hint_y=None, height='72dp', font_size="12sp", multiline=True)
         header.add_widget(name_label)
         header.add_widget(self.name_input)
         header.add_widget(desc_label)
@@ -316,13 +352,13 @@ class ScenarioEditorScreen(Screen):
 
         from kivy.uix.gridlayout import GridLayout
 
-        inner = BoxLayout(orientation="vertical", size_hint_y=None, spacing=2, padding=[2, 2])
+        inner = BoxLayout(orientation="vertical", size_hint_y=None, spacing='2dp', padding=[dp(2), dp(2)])
         inner.bind(minimum_height=inner.setter("height"))
 
         actions_header = Label(
             text="Available Actions",
             size_hint_y=None,
-            height=22,
+            height='22dp',
             bold=True,
             font_size="11sp",
             color=(0.8, 0.8, 0.8, 1),
@@ -331,7 +367,7 @@ class ScenarioEditorScreen(Screen):
         )
         inner.add_widget(actions_header)
 
-        actions_grid = GridLayout(cols=1, size_hint_y=None, spacing=2, padding=[4, 4])
+        actions_grid = GridLayout(cols=1, size_hint_y=None, spacing='2dp', padding=[dp(4), dp(4)])
         actions_grid.bind(minimum_height=actions_grid.setter("height"))
 
         for action in Action:
@@ -353,7 +389,7 @@ class ScenarioEditorScreen(Screen):
         patches_header = Label(
             text="Available Patches",
             size_hint_y=None,
-            height=22,
+            height='22dp',
             bold=True,
             font_size="11sp",
             color=(0.8, 0.8, 0.8, 1),
@@ -362,7 +398,7 @@ class ScenarioEditorScreen(Screen):
         )
         inner.add_widget(patches_header)
 
-        patches_grid = GridLayout(cols=1, size_hint_y=None, spacing=2, padding=[4, 4])
+        patches_grid = GridLayout(cols=1, size_hint_y=None, spacing='2dp', padding=[dp(4), dp(4)])
         patches_grid.bind(minimum_height=patches_grid.setter("height"))
 
         for ca in custom_actions:
@@ -394,36 +430,36 @@ class ScenarioEditorScreen(Screen):
 
         title = action_data.name if hasattr(action_data, 'name') else action_data.name.title()
         from kivy.uix.widget import Widget
-        content = BoxLayout(orientation="vertical", spacing=6, padding=[10, 10])
+        content = BoxLayout(orientation="vertical", spacing='6dp', padding=[dp(10), dp(10)])
         content.bind(minimum_height=content.setter("height"))
 
-        content.add_widget(Label(text="Name:", size_hint_y=None, height=18, font_size="11sp", halign="left", color=(0.7, 0.7, 0.7, 1)))
+        content.add_widget(Label(text="Name:", size_hint_y=None, height='18dp', font_size="11sp", halign="left", color=(0.7, 0.7, 0.7, 1)))
         name_input = TextInput(
             text=action_data.name if hasattr(action_data, 'name') else action_data.name.title(),
-            size_hint_y=None, height=28, font_size="12sp", multiline=False,
+            size_hint_y=None, height='28dp', font_size="12sp", multiline=False,
             readonly=is_builtin_action,
         )
         content.add_widget(name_input)
 
-        content.add_widget(Label(text="Description:", size_hint_y=None, height=18, font_size="11sp", halign="left", color=(0.7, 0.7, 0.7, 1)))
+        content.add_widget(Label(text="Description:", size_hint_y=None, height='18dp', font_size="11sp", halign="left", color=(0.7, 0.7, 0.7, 1)))
         desc_input = TextInput(
             text=action_data.description if hasattr(action_data, 'description') else "",
-            size_hint_y=None, height=48, font_size="12sp", multiline=True,
+            size_hint_y=None, height='48dp', font_size="12sp", multiline=True,
             readonly=is_builtin_action,
         )
         content.add_widget(desc_input)
 
         type_label = action_data.type.name.title() if is_custom else "ACTION"
-        content.add_widget(Label(text="Type:", size_hint_y=None, height=18, font_size="11sp", halign="left", color=(0.7, 0.7, 0.7, 1)))
-        type_input = TextInput(text=type_label, size_hint_y=None, height=28, font_size="12sp", multiline=False, readonly=True)
+        content.add_widget(Label(text="Type:", size_hint_y=None, height='18dp', font_size="11sp", halign="left", color=(0.7, 0.7, 0.7, 1)))
+        type_input = TextInput(text=type_label, size_hint_y=None, height='28dp', font_size="12sp", multiline=False, readonly=True)
         content.add_widget(type_input)
 
         logic_label = action_data.logic if is_custom else ("built-in" if is_builtin_action else "")
-        content.add_widget(Label(text="Logic:", size_hint_y=None, height=18, font_size="11sp", halign="left", color=(0.7, 0.7, 0.7, 1)))
-        logic_box = BoxLayout(orientation="horizontal", size_hint_y=None, height=28, spacing=4)
+        content.add_widget(Label(text="Logic:", size_hint_y=None, height='18dp', font_size="11sp", halign="left", color=(0.7, 0.7, 0.7, 1)))
+        logic_box = BoxLayout(orientation="horizontal", size_hint_y=None, height='28dp', spacing='4dp')
         logic_input = TextInput(
             text=logic_label,
-            size_hint_x=1, size_hint_y=None, height=28, font_size="12sp", multiline=False,
+            size_hint_x=1, size_hint_y=None, height='28dp', font_size="12sp", multiline=False,
             readonly=is_builtin_action,
         )
         logic_box.add_widget(logic_input)
@@ -440,12 +476,12 @@ class ScenarioEditorScreen(Screen):
                     dirselect=False,
                     custom_filter=script_filter,
                 )
-            browse_btn = Button(text="Browse", size_hint_x=None, width=60, font_size="10sp")
+            browse_btn = Button(text="Browse", size_hint_x=None, width='60dp', font_size="10sp")
             browse_btn.bind(on_release=on_browse)
             logic_box.add_widget(browse_btn)
         content.add_widget(logic_box)
 
-        btn_box = BoxLayout(spacing=10, size_hint_y=None, height=36)
+        btn_box = BoxLayout(spacing='10dp', size_hint_y=None, height='36dp')
 
         if is_builtin_action or (is_custom and action_data.is_builtin):
             close_btn = Button(text="Close", size_hint=(0.5, 1), font_size="12sp")
@@ -465,9 +501,9 @@ class ScenarioEditorScreen(Screen):
                     existing = CustomActionStore.load_all()
                     if any(c.name == new_name for c in existing):
                         err_popup = Popup(title="Duplicate Name", size_hint=(0.35, 0.18))
-                        err_content = BoxLayout(orientation="vertical", spacing=10, padding=10)
+                        err_content = BoxLayout(orientation="vertical", spacing='10dp', padding='10dp')
                         err_content.add_widget(Label(text=f"An action named '{new_name}' already exists."))
-                        err_btn_box = BoxLayout(spacing=10, size_hint_y=None, height=40)
+                        err_btn_box = BoxLayout(spacing='10dp', size_hint_y=None, height='40dp')
                         err_btn_box.add_widget(Button(text="OK", on_release=lambda *_: err_popup.dismiss()))
                         err_content.add_widget(err_btn_box)
                         err_popup.content = err_content
@@ -509,9 +545,9 @@ class ScenarioEditorScreen(Screen):
 
             def on_delete(*_):
                 popup.dismiss()
-                confirm = BoxLayout(orientation="vertical", spacing=10, padding=10)
+                confirm = BoxLayout(orientation="vertical", spacing='10dp', padding='10dp')
                 confirm.add_widget(Label(text=f"Delete '{action_data.name}'?"))
-                btn_row = BoxLayout(spacing=10, size_hint_y=None, height=40)
+                btn_row = BoxLayout(spacing='10dp', size_hint_y=None, height='40dp')
                 confirm_popup = Popup(title="Confirm", content=confirm, size_hint=(0.35, 0.2))
                 btn_row.add_widget(Button(text="Cancel", on_release=lambda *_: confirm_popup.dismiss()))
                 btn_row.add_widget(Button(text="Delete", background_color=(0.8, 0.2, 0.2, 1),
@@ -552,9 +588,9 @@ class ScenarioEditorScreen(Screen):
                     used_in.add(f"Profile: {p.name}")
         if used_in:
             msg = f"Cannot delete '{action_data.name}'. It is used in:\n" + "\n".join(f"  - {ref}" for ref in used_in)
-            content = BoxLayout(orientation="vertical", spacing=10, padding=10)
+            content = BoxLayout(orientation="vertical", spacing='10dp', padding='10dp')
             content.add_widget(Label(text=msg, font_size="11sp"))
-            btn_box = BoxLayout(spacing=10, size_hint_y=None, height=40)
+            btn_box = BoxLayout(spacing='10dp', size_hint_y=None, height='40dp')
             popup = Popup(title="Action In Use", content=content, size_hint=(0.45, 0.35))
             btn_box.add_widget(Button(text="OK", on_release=lambda *_: popup.dismiss()))
             content.add_widget(btn_box)
@@ -567,26 +603,32 @@ class ScenarioEditorScreen(Screen):
     def _show_create_action_dialog(self):
         import uuid
         from kivy.uix.widget import Widget
-        content = BoxLayout(orientation="vertical", spacing=6, padding=[10, 10])
+        content = BoxLayout(orientation="vertical", spacing='6dp', padding=[dp(10), dp(10)])
         content.bind(minimum_height=content.setter("height"))
 
-        content.add_widget(Label(text="Name:", size_hint_y=None, height=18, font_size="11sp", halign="left", color=(0.7, 0.7, 0.7, 1)))
-        name_input = TextInput(size_hint_y=None, height=28, font_size="12sp", multiline=False)
+        info = Label(
+            text="Custom actions are reusable scripts you define. They appear in the palette and can be dragged into any scenario's action sequence.\n\nAction = runs a standalone script (e.g. compile, package).\nPatch = a single action that invokes ALL patches selected for the current profile.",
+            size_hint_y=None, height='60dp', font_size="10sp", halign="left", color=(0.6, 0.6, 0.6, 1),
+            text_size=(content.width - '20dp', None), valign="top")
+        content.add_widget(info)
+
+        content.add_widget(Label(text="Name:", size_hint_y=None, height='18dp', font_size="11sp", halign="left", color=(0.7, 0.7, 0.7, 1)))
+        name_input = TextInput(size_hint_y=None, height='28dp', font_size="12sp", multiline=False)
         content.add_widget(name_input)
 
-        content.add_widget(Label(text="Description:", size_hint_y=None, height=18, font_size="11sp", halign="left", color=(0.7, 0.7, 0.7, 1)))
-        desc_input = TextInput(size_hint_y=None, height=48, font_size="12sp", multiline=True)
+        content.add_widget(Label(text="Description:", size_hint_y=None, height='18dp', font_size="11sp", halign="left", color=(0.7, 0.7, 0.7, 1)))
+        desc_input = TextInput(size_hint_y=None, height='48dp', font_size="12sp", multiline=True)
         content.add_widget(desc_input)
 
-        content.add_widget(Label(text="Type:", size_hint_y=None, height=18, font_size="11sp", halign="left", color=(0.7, 0.7, 0.7, 1)))
-        type_spinner = Spinner(text="Action", values=["Action", "Patch"], size_hint_y=None, height=28, font_size="12sp")
+        content.add_widget(Label(text="Type:", size_hint_y=None, height='18dp', font_size="11sp", halign="left", color=(0.7, 0.7, 0.7, 1)))
+        type_spinner = Spinner(text="Action", values=["Action", "Patch"], size_hint_y=None, height='28dp', font_size="12sp")
         content.add_widget(type_spinner)
 
-        content.add_widget(Label(text="Logic (script path or built-in name):", size_hint_y=None, height=18, font_size="11sp", halign="left", color=(0.7, 0.7, 0.7, 1)))
-        logic_input = TextInput(size_hint_y=None, height=28, font_size="12sp", multiline=False)
-        logic_box = BoxLayout(spacing=4, size_hint_y=None, height=28)
+        content.add_widget(Label(text="Logic (script path or built-in name):", size_hint_y=None, height='18dp', font_size="11sp", halign="left", color=(0.7, 0.7, 0.7, 1)))
+        logic_input = TextInput(size_hint_y=None, height='28dp', font_size="12sp", multiline=False)
+        logic_box = BoxLayout(spacing='4dp', size_hint_y=None, height='28dp')
         logic_box.add_widget(logic_input)
-        browse_btn = Button(text="Browse", size_hint_x=None, width=60, font_size="10sp")
+        browse_btn = Button(text="Browse", size_hint_x=None, width='60dp', font_size="10sp")
 
         def on_browse(*_):
             from src.screens.file_chooser_helper import FileChooserHelper
@@ -605,7 +647,7 @@ class ScenarioEditorScreen(Screen):
         logic_box.add_widget(browse_btn)
         content.add_widget(logic_box)
 
-        btn_box = BoxLayout(spacing=10, size_hint_y=None, height=36)
+        btn_box = BoxLayout(spacing='10dp', size_hint_y=None, height='36dp')
         popup = Popup(title="New Custom Action", content=content, size_hint=(0.45, 0.6))
 
         def on_save(*_):
@@ -615,9 +657,9 @@ class ScenarioEditorScreen(Screen):
             existing = CustomActionStore.load_all()
             if any(ca.name == name for ca in existing):
                 err_popup = Popup(title="Duplicate Name", size_hint=(0.35, 0.18))
-                err_content = BoxLayout(orientation="vertical", spacing=10, padding=10)
+                err_content = BoxLayout(orientation="vertical", spacing='10dp', padding='10dp')
                 err_content.add_widget(Label(text=f"An action named '{name}' already exists."))
-                err_btn_box = BoxLayout(spacing=10, size_hint_y=None, height=40)
+                err_btn_box = BoxLayout(spacing='10dp', size_hint_y=None, height='40dp')
                 err_btn_box.add_widget(Button(text="OK", on_release=lambda *_: err_popup.dismiss()))
                 err_content.add_widget(err_btn_box)
                 err_popup.content = err_content
@@ -671,6 +713,38 @@ class ScenarioEditorScreen(Screen):
             self.delete_btn.disabled = scenario.is_predefined
 
         self._update_undo_redo_buttons()
+
+    def show_help(self):
+        show_help_popup(
+            "Scenario Builder Help",
+            "This screen lets you create and manage build scenarios.\n\n"
+            "- Scenarios list (left): Click a scenario to select and edit it.\n"
+            "- [R] marks read-only predefined scenarios.\n"
+            "- Name/Description: Edit scenario metadata.\n"
+            "- Action sequence (center): Shows the ordered list of build actions.\n"
+            "- Drag actions to reorder, click X to remove.\n"
+            "- Available Actions/Patches (right): Drag into the sequence to add.\n"
+            "- Click '+ New Action' to create a custom action or patch.\n"
+            "- Click an existing action to edit its properties.\n"
+            "- Use Undo/Redo to revert changes.\n"
+            "- Click 'Save' to persist, 'Delete' to remove the scenario.\n\n"
+            "Custom Actions & Patches:\n"
+            "- Custom actions are user-defined scripts you can create and reuse.\n"
+            "- Click '+ New Action' to open the creation dialog.\n"
+            "- Give it a name, description, and select Action or Patch type.\n"
+            "- For Logic, provide the path to a .bat script or built-in name.\n"
+            "- Once created, the action appears in the palette and can be\n"
+            "  dragged into any scenario's action sequence.\n"
+            "- Click an existing custom action in the palette to edit or delete it.\n\n"
+            "Action vs Patch:\n"
+            "- Action: Runs a standalone script or command. It builds or processes\n"
+            "  something independently (e.g., compile, package, deploy).\n"
+            "- Patch: A single action that automatically invokes ALL patches\n"
+            "  selected for the current profile under 'Available patches'.\n"
+            "  Configure which patches to apply in the Profile Editor.\n"
+            "- In the action sequence, a Patch card shows individual patch\n"
+            "  buttons so you can run them separately if allowed."
+        )
 
     def on_new(self):
         self._current_scenario = None
@@ -728,13 +802,13 @@ class ScenarioEditorScreen(Screen):
         seq_layout = StackLayout(
             orientation='lr-tb',
             size_hint=(1, None),
-            spacing=2,
-            padding=[4, 4],
+            spacing='2dp',
+            padding=[dp(4), dp(4)],
         )
         seq_layout.bind(minimum_height=seq_layout.setter("height"))
 
         is_readonly = self._current_scenario and self._current_scenario.is_predefined
-        card_height = 36 if is_readonly else 58
+        card_height = dp(36) if is_readonly else dp(58)
 
         self._card_widgets.clear()
         self._drop_zones.clear()
@@ -744,7 +818,7 @@ class ScenarioEditorScreen(Screen):
                 arrow = Label(
                     text="->",
                     size_hint=(None, None),
-                    size=(24, card_height),
+                    size=(dp(24), card_height),
                     bold=True,
                     color=(0.6, 0.6, 0.6, 1),
                     valign="center",
@@ -758,11 +832,11 @@ class ScenarioEditorScreen(Screen):
             else:
                 display_name = action.name.title()
                 ca_exists = True
-            card = BoxLayout(orientation="vertical", size_hint=(None, None), size=(100, card_height), spacing=2)
+            card = BoxLayout(orientation="vertical", size_hint=(None, None), size=(dp(100), card_height), spacing='2dp')
             action_btn = Button(
                 text=display_name,
                 size_hint_y=None,
-                height=36,
+                height='36dp',
                 font_size="10sp",
                 background_normal="",
                 background_color=(0.5, 0.15, 0.15, 1) if not ca_exists else (0.3, 0.3, 0.3, 1),
@@ -781,7 +855,7 @@ class ScenarioEditorScreen(Screen):
                 remove_btn = Button(
                     text="X",
                     size_hint_y=None,
-                    height=20,
+                    height='20dp',
                     font_size="9sp",
                     background_normal="",
                     background_color=(0.6, 0.1, 0.1, 1),
@@ -801,7 +875,7 @@ class ScenarioEditorScreen(Screen):
             trash = Label(
                 text="[ Drop actions here to remove ]",
                 size_hint_y=None,
-                height=28,
+                height='28dp',
                 font_size="11sp",
                 color=(0.6, 0.3, 0.3, 1),
                 halign="center",
@@ -852,7 +926,7 @@ class ScenarioEditorScreen(Screen):
                 btn._ghost = Button(
                     text=btn.text,
                     size_hint=(None, None),
-                    size=(100, 36),
+                    size=('100dp', '36dp'),
                     font_size="12sp",
                     background_color=(0.3, 0.5, 0.7, 0.8),
                 )
@@ -1090,9 +1164,9 @@ class ScenarioEditorScreen(Screen):
                         seen.add(name)
         if missing:
             msg = f"Cannot save. Scenario references missing actions:\n" + "\n".join(f"  - {name}" for name in missing)
-            content = BoxLayout(orientation="vertical", spacing=10, padding=10)
+            content = BoxLayout(orientation="vertical", spacing='10dp', padding='10dp')
             content.add_widget(Label(text=msg, font_size="11sp"))
-            btn_box = BoxLayout(spacing=10, size_hint_y=None, height=40)
+            btn_box = BoxLayout(spacing='10dp', size_hint_y=None, height='40dp')
             popup = Popup(title="Missing Actions", content=content, size_hint=(0.45, 0.3))
             btn_box.add_widget(Button(text="OK", on_release=lambda *_: popup.dismiss()))
             content.add_widget(btn_box)
@@ -1103,9 +1177,9 @@ class ScenarioEditorScreen(Screen):
         for s in existing:
             if s.name == new_name:
                 if self._current_scenario is None or s.name != self._current_scenario.name:
-                    content = BoxLayout(orientation="vertical", spacing=10, padding=10)
+                    content = BoxLayout(orientation="vertical", spacing='10dp', padding='10dp')
                     content.add_widget(Label(text=f"A scenario named '{new_name}' already exists."))
-                    btn_box = BoxLayout(spacing=10, size_hint_y=None, height=40)
+                    btn_box = BoxLayout(spacing='10dp', size_hint_y=None, height='40dp')
                     popup = Popup(title="Duplicate Name", content=content, size_hint=(0.35, 0.18))
                     btn_box.add_widget(Button(text="OK", on_release=lambda *_: popup.dismiss()))
                     content.add_widget(btn_box)
@@ -1133,9 +1207,9 @@ class ScenarioEditorScreen(Screen):
         if not self._current_scenario or self._current_scenario.is_predefined:
             return
 
-        content = BoxLayout(orientation="vertical", spacing=10, padding=10)
+        content = BoxLayout(orientation="vertical", spacing='10dp', padding='10dp')
         content.add_widget(Label(text=f"Delete scenario '{self._current_scenario.name}'?"))
-        btn_box = BoxLayout(spacing=10, size_hint_y=None, height=40)
+        btn_box = BoxLayout(spacing='10dp', size_hint_y=None, height='40dp')
         popup = Popup(title="Confirm", content=content, size_hint=(0.4, 0.3))
         btn_box.add_widget(Button(text="Cancel", on_release=lambda *_: popup.dismiss()))
         btn_box.add_widget(Button(
@@ -1165,9 +1239,9 @@ class ScenarioEditorScreen(Screen):
 
     def on_back(self):
         if self._undo_mgr.has_unsaved:
-            content = BoxLayout(orientation="vertical", spacing=10, padding=10)
+            content = BoxLayout(orientation="vertical", spacing='10dp', padding='10dp')
             content.add_widget(Label(text="Save changes before leaving?"))
-            btn_box = BoxLayout(spacing=6, size_hint_y=None, height=40)
+            btn_box = BoxLayout(spacing='6dp', size_hint_y=None, height='40dp')
             popup = Popup(title="Unsaved Changes", content=content, size_hint=(0.45, 0.25))
             def save_and_leave(*_):
                 self.on_save()
@@ -1177,9 +1251,9 @@ class ScenarioEditorScreen(Screen):
                 self._reset_state()
                 popup.dismiss()
                 self._navigate_back()
-            btn_box.add_widget(Button(text="Save and Leave", size_hint_x=None, width=120, on_release=save_and_leave))
-            btn_box.add_widget(Button(text="Discard and Leave", size_hint_x=None, width=120, on_release=discard_and_leave))
-            btn_box.add_widget(Button(text="Cancel", size_hint_x=None, width=90, on_release=lambda *_: popup.dismiss()))
+            btn_box.add_widget(Button(text="Save and Leave", size_hint_x=None, width='120dp', on_release=save_and_leave))
+            btn_box.add_widget(Button(text="Discard and Leave", size_hint_x=None, width='120dp', on_release=discard_and_leave))
+            btn_box.add_widget(Button(text="Cancel", size_hint_x=None, width='90dp', on_release=lambda *_: popup.dismiss()))
             content.add_widget(btn_box)
             popup.open()
         else:
