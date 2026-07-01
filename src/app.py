@@ -8,6 +8,7 @@ import src.patches
 from .screens.actions_screen import ActionsScreen
 from .screens.profile_editor_screen import ProfileEditorScreen
 from .screens.scenario_editor_screen import ScenarioEditorScreen
+from .screens.settings_screen import SettingsScreen
 from .services.log_service import LogService
 from .services.storage_service import ProfileStore, SettingsStore
 from .models.profile import Profile
@@ -29,11 +30,13 @@ class BuildozerManagerApp(App):
         Builder.load_file(str(Path(self.kv_directory) / "profile_editor_screen.kv"))
         Builder.load_file(str(Path(self.kv_directory) / "scenario_editor_screen.kv"))
         Builder.load_file(str(Path(self.kv_directory) / "log_panel.kv"))
+        Builder.load_file(str(Path(self.kv_directory) / "settings_screen.kv"))
 
         sm = ScreenManager()
         sm.add_widget(ActionsScreen(name="actions"))
         sm.add_widget(ProfileEditorScreen(name="editor"))
         sm.add_widget(ScenarioEditorScreen(name="scenario_builder"))
+        sm.add_widget(SettingsScreen(name="settings"))
 
         actions_screen = sm.get_screen("actions")
         editor_screen = sm.get_screen("editor")

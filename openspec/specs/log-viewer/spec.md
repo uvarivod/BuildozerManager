@@ -31,7 +31,7 @@ The system SHALL prepend each log line with `[YYYY-MM-DD HH:MM:SS]` timestamp.
 - **THEN** it is displayed as `[2026-06-17 11:30:00] Starting build...`
 
 ### Requirement: Execution duration is shown
-The system SHALL display the elapsed time since the current action/scenario started, updated every second.
+The system SHALL display the elapsed time since the current action/scenario started, updated every 0.5 seconds.
 
 #### Scenario: Duration display
 - **WHEN** an action has been running for 2 minutes 30 seconds
@@ -64,3 +64,20 @@ The system SHALL support selecting log text by click-drag within the viewport an
 - **WHEN** the user plain-clicks a new line after a previous selection
 - **THEN** the selection anchor is reset to the new click position
 - **THEN** a subsequent SHIFT+click selects from the new anchor
+
+### Requirement: Log auto-save uses configured log directory
+The system SHALL save session log files to the user-configured log directory (from Settings) instead of a hardcoded `logs/` path.
+
+#### Scenario: Auto-save uses configured directory
+- **WHEN** the user has configured a custom log directory in Settings
+- **THEN** session logs are auto-saved to that directory
+- **WHEN** no custom directory is configured
+- **THEN** session logs are auto-saved to the default `logs/` directory
+
+### Requirement: Log cleanup runs after execution completes
+The system SHALL trigger log directory cleanup after each scenario or action run, respecting the configured max log size.
+
+#### Scenario: Post-execution cleanup
+- **WHEN** a scenario or individual action finishes execution
+- **THEN** the log cleanup mechanism checks the log directory size
+- **THEN** oldest log files are deleted if the size exceeds the configured limit

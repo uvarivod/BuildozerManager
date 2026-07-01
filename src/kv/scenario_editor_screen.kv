@@ -1,4 +1,5 @@
 #:kivy 2.3.1
+#:import dp kivy.metrics.dp
 
 <ScenarioEditorScreen>:
     scenario_list_container: scenario_list
@@ -11,17 +12,17 @@
     back_btn: back_btn
     BoxLayout:
         orientation: 'vertical'
-        padding: 10
-        spacing: 8
+        padding: '10dp'
+        spacing: '8dp'
         BoxLayout:
             size_hint_y: None
-            height: 40
-            spacing: 10
+            height: '40dp'
+            spacing: '10dp'
             Button:
                 id: back_btn
                 text: '<- Back'
                 size_hint_x: None
-                width: 100
+                width: '100dp'
                 on_release: root.on_back()
             Label:
                 text: 'Scenario Editor'
@@ -29,19 +30,24 @@
                 font_size: '16sp'
                 halign: 'center'
                 valign: 'middle'
+            Button:
+                text: '?'
+                size_hint_x: None
+                width: '30dp'
+                on_release: root.show_help()
         BoxLayout:
             orientation: 'horizontal'
-            spacing: 8
+            spacing: '8dp'
             BoxLayout:
                 orientation: 'vertical'
                 size_hint_x: None
-                width: 200
-                spacing: 4
+                width: '200dp'
+                spacing: '4dp'
                 Label:
                     text: 'Scenarios'
                     bold: True
                     size_hint_y: None
-                    height: 24
+                    height: '24dp'
                     font_size: '12sp'
                     color: (0.8, 0.8, 0.8, 1)
                 ScrollView:
@@ -52,13 +58,13 @@
                         cols: 1
                         size_hint_y: None
                         height: self.minimum_height
-                        spacing: 2
-                        padding: [2, 2]
+                        spacing: '2dp'
+                        padding: [dp(2), dp(2)]
             BoxLayout:
                 orientation: 'vertical'
                 id: editor_box
-                spacing: 4
-                padding: [4, 4]
+                spacing: '4dp'
+                padding: [dp(4), dp(4)]
                 canvas.before:
                     Color:
                         rgba: (0.15, 0.15, 0.15, 1)
@@ -68,13 +74,13 @@
             BoxLayout:
                 orientation: 'vertical'
                 size_hint_x: None
-                width: 180
-                spacing: 4
+                width: '180dp'
+                spacing: '4dp'
                 Button:
                     id: new_action_btn
                     text: '+ New Action'
                     size_hint_y: None
-                    height: 28
+                    height: '28dp'
                     font_size: '11sp'
                     background_normal: ''
                     background_color: (0.3, 0.5, 0.7, 1)
@@ -85,27 +91,27 @@
                     do_scroll_y: True
         BoxLayout:
             size_hint_y: None
-            height: 40
-            spacing: 10
-            padding: [4, 4]
+            height: '40dp'
+            spacing: '10dp'
+            padding: [dp(4), dp(4)]
             Button:
                 id: undo_btn
                 text: 'Undo'
                 size_hint_x: None
-                width: 80
+                width: '80dp'
                 disabled: True
                 on_release: root.on_undo()
             Button:
                 id: redo_btn
                 text: 'Redo'
                 size_hint_x: None
-                width: 80
+                width: '80dp'
                 disabled: True
                 on_release: root.on_redo()
             Button:
                 text: 'New'
                 size_hint_x: None
-                width: 60
+                width: '60dp'
                 background_color: (0.2, 0.3, 0.5, 1)
                 on_release: root.on_new()
             BoxLayout:
@@ -114,13 +120,13 @@
                 id: save_btn
                 text: 'Save'
                 size_hint_x: None
-                width: 100
+                width: '100dp'
                 background_color: (0.2, 0.5, 0.2, 1)
                 on_release: root.on_save()
             Button:
                 id: delete_btn
                 text: 'Delete'
                 size_hint_x: None
-                width: 80
+                width: '80dp'
                 background_color: (0.6, 0.1, 0.1, 1)
                 on_release: root.on_delete()

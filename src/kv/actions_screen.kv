@@ -1,4 +1,5 @@
 #:kivy 2.3.1
+#:import dp kivy.metrics.dp
 #:import LogPanel src.screens.log_panel.LogPanel
 #:import ActionCard src.screens.action_card.ActionCard
 
@@ -6,73 +7,81 @@
     log_panel: log_panel
     scenario_spinner: scenario_spinner
     profile_spinner: profile_spinner
+    profile_btn: profile_btn
     chain_container: chain_container
     BoxLayout:
         orientation: 'vertical'
-        padding: 10
-        spacing: 8
+        padding: '10dp'
+        spacing: '8dp'
         BoxLayout:
             size_hint_y: None
-            height: 36
-            spacing: 6
+            height: '36dp'
+            spacing: '6dp'
             Spinner:
                 id: profile_spinner
                 text: 'Select profile'
                 size_hint_x: None
-                width: 200
+                width: '200dp'
                 on_text: root.on_profile_spinner_text(self.text)
             Button:
                 text: 'Delete'
                 size_hint_x: None
-                width: 60
+                width: '60dp'
                 background_color: 0.8, 0.2, 0.2, 1
                 on_release: root.delete_profile()
             Label:
                 text: ''
                 size_hint_x: 1
             Button:
-                text: 'Edit Profile'
+                id: profile_btn
+                text: 'Select a profile'
                 size_hint_x: None
-                width: 100
-                on_release: root.edit_profile()
-            Button:
-                text: 'New Profile'
-                size_hint_x: None
-                width: 100
-                on_release: root.new_profile()
+                width: '110dp'
+                on_release: root.on_profile_btn()
             Button:
                 text: 'Scenarios'
                 size_hint_x: None
-                width: 100
+                width: '100dp'
                 disabled: root.is_running
                 on_release: root.open_scenario_editor()
+            Button:
+                text: 'Settings'
+                size_hint_x: None
+                width: '80dp'
+                disabled: root.is_running
+                on_release: root.open_settings()
+            Button:
+                text: '?'
+                size_hint_x: None
+                width: '30dp'
+                on_release: root.show_help()
         Label:
             text: root.status_label
             bold: True
             size_hint_y: None
-            height: 24
+            height: '24dp'
         BoxLayout:
             orientation: 'horizontal'
             size_hint_y: None
-            height: 36
-            spacing: 10
+            height: '36dp'
+            spacing: '10dp'
             Label:
                 text: 'Scenarios'
                 bold: True
                 size_hint_x: None
-                width: 80
+                width: '80dp'
             Spinner:
                 id: scenario_spinner
                 text: 'Select scenario'
                 size_hint_x: 0.4
                 size_hint_y: None
-                height: 36
+                height: '36dp'
                 on_text: root.on_scenario_selected(self.text)
             BoxLayout:
                 orientation: 'horizontal'
                 size_hint_x: None
-                width: 250
-                spacing: 2
+                width: '250dp'
+                spacing: '2dp'
                 BoxLayout:
                 CheckBox:
                     active: root.allow_separate_execution
@@ -80,38 +89,38 @@
                 Label:
                     text: 'Allow running separately'
                     size_hint_x: None
-                    width: 200
+                    width: '200dp'
                     halign: 'left'
                     valign: 'middle'
                     text_size: self.size
 
         ScrollView:
             size_hint_y: None
-            height: 140
+            height: '140dp'
             do_scroll_x: True
             do_scroll_y: False
             BoxLayout:
                 id: chain_container
                 orientation: 'horizontal'
                 size_hint_x: None
-                spacing: 4
-                padding: [4, 4]
+                spacing: '4dp'
+                padding: [dp(4), dp(4)]
         BoxLayout:
             orientation: 'horizontal'
             size_hint_y: None
-            height: 40
-            spacing: 10
+            height: '40dp'
+            spacing: '10dp'
             Button:
                 text: 'Run Scenario'
                 size_hint_x: None
-                width: 160
+                width: '160dp'
                 background_color: 0.2, 0.6, 0.2, 1
                 disabled: root.is_running or not root.scenario_spinner or root.scenario_spinner.text == 'Select scenario'
                 on_release: root.run_scenario()
             Button:
                 text: 'Cancel'
                 size_hint_x: None
-                width: 120
+                width: '120dp'
                 background_color: 0.8, 0.2, 0.2, 1
                 disabled: not root.is_running
                 on_release: root.cancel_action()

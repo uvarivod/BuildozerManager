@@ -104,7 +104,7 @@ class PatchCard(BoxLayout):
             btn = Button(
                 text=name,
                 size_hint_y=None,
-                height=28,
+                height='28dp',
                 font_size="10sp",
                 background_normal="",
                 background_color=(0.25, 0.25, 0.25, 1),

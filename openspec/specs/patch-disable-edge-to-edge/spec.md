@@ -31,22 +31,22 @@ The patch SHALL iterate all 3 AndroidManifest template paths, same as `patch_bac
 - **WHEN** `patch_activity_theme` runs
 - **THEN** it SHALL attempt to patch all 3 template file paths and log success/failure for each
 
-### Requirement: themes.xml is ensured in build dist
-The patch SHALL ensure `themes.xml` (which defines `AppTheme.NoEdgeToEdge`) exists in the buildozer dist output before patching the manifest templates.
+### Requirement: themes.xml is checked in build dist
+The patch SHALL check whether `themes.xml` (which defines `AppTheme.NoEdgeToEdge`) exists in the buildozer dist output before patching the manifest templates.
 The expected destination path SHALL be:
-`{wsldir}/.buildozer/android/platform/build-{archs_joined}/dists/{package_name}/res/values/themes.xml`
-If the file already exists at the destination, the patch SHALL log a success message and skip copying.
-If the file is missing, the patch SHALL log a warning and copy from the project's `android_res/values/themes.xml` (relative to profile.sourcedir).
-If the source `android_res/values/themes.xml` is also missing, the patch SHALL log a failure and abort.
+`{wsldir}/.buildozer/android/platform/build-{archs_joined}/dists/{package_name}/src/main/res/values/themes.xml`
+If the file already exists at the destination, the patch SHALL log a success message and proceed.
+If the file is missing, the patch SHALL log a warning with instructions for the user to manually add the file.
+If the source `android_res/values/themes.xml` is also missing, the patch SHALL log a failure and abort the activity theme patching.
 
 #### Scenario: themes.xml exists at destination
 - **WHEN** `patch_activity_theme` runs and `themes.xml` already exists at the expected dist path
-- **THEN** the patch SHALL log "[SUCCESS]" and skip copying
+- **THEN** the patch SHALL log "[SUCCESS]" and proceed
 
-#### Scenario: themes.xml missing, copied from project source
-- **WHEN** `patch_activity_theme` runs and `themes.xml` is missing at the destination but exists at `{sourcedir}/android_res/values/themes.xml`
-- **THEN** the patch SHALL log a warning about the missing file
-- **AND** copy the project's `android_res/values/themes.xml` to the destination
+#### Scenario: themes.xml missing at destination
+- **WHEN** `patch_activity_theme` runs and `themes.xml` is missing at the destination
+- **THEN** the patch SHALL log a warning with instructions for manual addition
+- **AND** the activity theme patching continues (may fail if theme reference cannot be resolved)
 
 #### Scenario: themes.xml missing in both locations
 - **WHEN** `patch_activity_theme` runs and `themes.xml` is missing at both destination and project source

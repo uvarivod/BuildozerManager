@@ -65,7 +65,7 @@ class FileChooserHelper:
 
         label_text = f"Selected: {current_path}" if current_path else "Selected: (none)"
         path_label = Label(
-            text=label_text, size_hint_y=None, height=28, halign="left"
+            text=label_text, size_hint_y=None, height='28dp', halign="left"
         )
         path_label.bind(
             size=lambda *_: setattr(path_label, "text_size", (path_label.width, None))
@@ -111,15 +111,15 @@ class FileChooserHelper:
         toggle_btn = ToggleButton(
             text="Icon View" if is_list else "List View",
             size_hint=(None, None),
-            size=(100, 28),
+            size=('100dp', '28dp'),
         )
         toggle_btn.bind(on_release=toggle_view)
 
-        top_bar = BoxLayout(size_hint_y=None, height=32)
+        top_bar = BoxLayout(size_hint_y=None, height='32dp')
         top_bar.add_widget(path_label)
         top_bar.add_widget(toggle_btn)
 
-        btn_row = BoxLayout(size_hint_y=None, height=44, spacing=10, padding=[0, 6])
+        btn_row = BoxLayout(size_hint_y=None, height='44dp', spacing='10dp', padding=[dp(0), dp(6)])
         btn_row.add_widget(Button(text="Cancel", on_release=cancel))
         choose_btn = Button(
             text="Choose", background_color=(0.2, 0.6, 0.2, 1), on_release=confirm

@@ -36,10 +36,10 @@ The system SHALL apply all enabled patches to the `.buildozer` directory in WSL 
 - **THEN** each patch result (success/failure) is logged
 
 ### Requirement: Patch failure does not block other patches
-If one patch fails, the system SHALL log the error and continue with the next patch.
+If one patch fails, the system SHALL log the error and continue with the next patch. The overall PATCH action status is SUCCESS if all patches succeed, FAILED if any patch fails.
 
 #### Scenario: Partial patch failure
 - **WHEN** patch "A" succeeds and patch "B" raises an exception
 - **THEN** the system logs patch "A" as success and patch "B" as failed
 - **THEN** the Patch action continues to subsequent patches
-- **THEN** the overall Patch action status is "Partial Success"
+- **THEN** the overall PATCH action status is FAILED
