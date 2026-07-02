@@ -40,13 +40,21 @@
                 halign: 'left'
                 valign: 'middle'
                 color: (0.8, 0.8, 0.8, 1)
-            TextInput:
-                id: log_dir_input
+            BoxLayout:
                 size_hint_y: None
                 height: '36dp'
-                font_size: '12sp'
-                multiline: False
-                hint_text: 'logs'
+                spacing: '6dp'
+                TextInput:
+                    id: log_dir_input
+                    font_size: '12sp'
+                    multiline: False
+                    hint_text: 'logs'
+                Button:
+                    text: 'Browse'
+                    size_hint_x: None
+                    width: '80dp'
+                    font_size: '11sp'
+                    on_release: root._browse_log_dir()
             Label:
                 text: 'Max Log Size (MB)'
                 size_hint_y: None
