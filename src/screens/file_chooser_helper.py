@@ -1,10 +1,10 @@
+from kivy.metrics import dp
 from kivy.uix.filechooser import FileChooserIconView, FileChooserListView
 from kivy.uix.popup import Popup
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.togglebutton import ToggleButton
 from kivy.uix.label import Label
 from kivy.uix.button import Button
-from pathlib import Path
 
 from src.services.storage_service import SettingsStore
 
@@ -43,7 +43,8 @@ class FileChooserHelper:
                       filter_dirs_only=False, custom_filter=None, selected_path=None):
         import os as _os
 
-        current_path = selected_path if selected_path else (initial_path if initial_path else "")
+        initial_path = initial_path if initial_path else _os.getcwd()
+        current_path = selected_path if selected_path else initial_path
 
         if filter_dirs_only:
             def _dirs_only(folder, filename):

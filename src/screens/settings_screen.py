@@ -9,6 +9,7 @@ from pathlib import Path
 from src.services.storage_service import SettingsStore
 from src.services.log_service import LogService
 from src.screens.help_popup import show_help_popup
+from src.screens.file_chooser_helper import FileChooserHelper
 
 
 DEFAULT_LOG_DIR = "logs"
@@ -34,6 +35,23 @@ class SettingsScreen(Screen):
             self.log_dir_input.text = log_dir
         if self.max_log_size_input:
             self.max_log_size_input.text = str(max_size)
+
+    def _browse_log_dir(self):
+        from pathlib import Path as _Path
+
+        current = self.log_dir_input.text.strip() or DEFAULT_LOG_DIR
+        try:
+            p = _Path(current)
+            initial_path = str(p) if p.is_dir() else str(p.parent)
+        except Exception:
+            initial_path = "."
+
+        def on_choose(chosen):
+            self.log_dir_input.text = chosen
+
+        FileChooserHelper.show_dir_chooser(
+            initial_path=initial_path, on_choose=on_choose
+        )
 
     def show_help(self):
         show_help_popup(

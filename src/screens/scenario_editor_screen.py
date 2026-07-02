@@ -606,12 +606,6 @@ class ScenarioEditorScreen(Screen):
         content = BoxLayout(orientation="vertical", spacing='6dp', padding=[dp(10), dp(10)])
         content.bind(minimum_height=content.setter("height"))
 
-        info = Label(
-            text="Custom actions are reusable scripts you define. They appear in the palette and can be dragged into any scenario's action sequence.\n\nAction = runs a standalone script (e.g. compile, package).\nPatch = a single action that invokes ALL patches selected for the current profile.",
-            size_hint_y=None, height='60dp', font_size="10sp", halign="left", color=(0.6, 0.6, 0.6, 1),
-            text_size=(content.width - '20dp', None), valign="top")
-        content.add_widget(info)
-
         content.add_widget(Label(text="Name:", size_hint_y=None, height='18dp', font_size="11sp", halign="left", color=(0.7, 0.7, 0.7, 1)))
         name_input = TextInput(size_hint_y=None, height='28dp', font_size="12sp", multiline=False)
         content.add_widget(name_input)
