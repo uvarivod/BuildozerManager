@@ -106,10 +106,10 @@ class ActionsScreen(Screen):
         self._refresh_profile_spinner()
 
     def on_pre_enter(self, *args):
-        Window.bind(on_resize=self._on_window_resize, size=self._on_window_resize, system_size=self._on_window_resize)
+        Window.bind(on_resize=self._on_window_resize)
 
     def on_leave(self, *args):
-        Window.unbind(on_resize=self._on_window_resize, size=self._on_window_resize, system_size=self._on_window_resize)
+        Window.unbind(on_resize=self._on_window_resize)
 
     def on_enter(self, *args):
         self._refresh_scenarios()
@@ -264,6 +264,15 @@ class ActionsScreen(Screen):
             self.chain_container.clear_widgets()
 
     def _build_action_chain(self, scenario: Scenario | None = None):
+        saved_states = {}
+        if hasattr(self, "_action_cards"):
+            for i, card in enumerate(self._action_cards):
+                saved_states[i] = {
+                    "action_state": card.action_state,
+                    "is_completed": card.is_completed,
+                    "is_skipped": card.is_skipped,
+                    "patch_states": getattr(card, "patch_states", None),
+                }
         self._clear_action_chain()
         if not self.chain_container or not scenario:
             return
@@ -307,6 +316,15 @@ class ActionsScreen(Screen):
             cards.append(card)
             self.chain_container.add_widget(card)
         self._action_cards = cards
+        if saved_states:
+            for i, card in enumerate(self._action_cards):
+                if i in saved_states:
+                    s = saved_states[i]
+                    card.action_state = s["action_state"]
+                    card.is_completed = s["is_completed"]
+                    card.is_skipped = s["is_skipped"]
+                    if s["patch_states"] is not None and hasattr(card, "patch_states"):
+                        card.patch_states = s["patch_states"]
         # Force container width to fit all children
         self.chain_container.bind(minimum_width=self.chain_container.setter("width"))
 
