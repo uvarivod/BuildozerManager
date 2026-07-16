@@ -77,3 +77,12 @@ Predefined scenarios ("Full Clean build", "Rebuild") SHALL NOT be editable or de
 
 ### Requirement: User scenarios and predefined scenarios coexist
 If a user creates a scenario with the same name as a predefined scenario, the predefined version SHALL continue to exist in `ScenarioService.get_predefined_scenarios()` while the user version is stored separately in `ScenarioStore`. Both appear in the scenario list and selector without source suffixes.
+
+### Requirement: Scenario run per-action status survives UI rebuilds
+The system SHALL preserve per-action status displayed during a scenario run across any UI widget rebuild triggered by window resize.
+
+#### Scenario: Scenario states persist on resize
+- **WHEN** a scenario is running and at least one action has completed with SUCCESS or FAILED
+- **WHEN** the user resizes or maximizes the window
+- **THEN** each action's displayed status SHALL remain unchanged
+- **THEN** the running action's state SHALL remain RUNNING
