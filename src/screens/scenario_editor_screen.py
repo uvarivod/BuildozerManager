@@ -16,7 +16,7 @@ from src.models.scenario import Scenario
 from src.models.patch import PatchRegistry
 from src.services.storage_service import ScenarioStore, CustomActionStore, ProfileStore
 from src.services.scenario_service import ScenarioService
-from src.screens.help_popup import show_help_popup
+from src.screens.dialog_helper import show_confirm_dialog, show_error_dialog, show_help_popup
 
 
 def _make_popup_label(text, **kw):
@@ -425,13 +425,13 @@ class ScenarioEditorScreen(Screen):
 
     def _show_edit_dialog(self, action_data):
         from src.models.custom_action import ActionType
+        from kivy.uix.scrollview import ScrollView
+        from kivy.uix.widget import Widget
         is_builtin_action = isinstance(action_data, Action)
         is_custom = isinstance(action_data, CustomAction)
 
         title = action_data.name if hasattr(action_data, 'name') else action_data.name.title()
-        from kivy.uix.widget import Widget
         content = BoxLayout(orientation="vertical", spacing='6dp', padding=[dp(10), dp(10)])
-        content.bind(minimum_height=content.setter("height"))
 
         content.add_widget(Label(text="Name:", size_hint_y=None, height='18dp', font_size="11sp", halign="left", color=(0.7, 0.7, 0.7, 1)))
         name_input = TextInput(
@@ -485,14 +485,12 @@ class ScenarioEditorScreen(Screen):
 
         if is_builtin_action or (is_custom and action_data.is_builtin):
             close_btn = Button(text="Close", size_hint=(0.5, 1), font_size="12sp")
-            popup = Popup(title=f"Action: {title}", content=content, size_hint=(0.45, 0.55))
             close_btn.bind(on_release=lambda *_: popup.dismiss())
             btn_box.add_widget(close_btn)
         elif is_custom:
             save_btn = Button(text="Save", size_hint=(0.4, 1), font_size="12sp", background_color=(0.2, 0.6, 0.2, 1))
             delete_btn = Button(text="Delete", size_hint=(0.3, 1), font_size="12sp", background_color=(0.6, 0.2, 0.2, 1))
             cancel_btn = Button(text="Cancel", size_hint=(0.3, 1), font_size="12sp")
-            popup = Popup(title=f"Custom Action: {title}", content=content, size_hint=(0.45, 0.55))
 
             def on_save(*_):
                 ca = action_data
@@ -500,14 +498,7 @@ class ScenarioEditorScreen(Screen):
                 if new_name != ca.name:
                     existing = CustomActionStore.load_all()
                     if any(c.name == new_name for c in existing):
-                        err_popup = Popup(title="Duplicate Name", size_hint=(0.35, 0.18))
-                        err_content = BoxLayout(orientation="vertical", spacing='10dp', padding='10dp')
-                        err_content.add_widget(Label(text=f"An action named '{new_name}' already exists."))
-                        err_btn_box = BoxLayout(spacing='10dp', size_hint_y=None, height='40dp')
-                        err_btn_box.add_widget(Button(text="OK", on_release=lambda *_: err_popup.dismiss()))
-                        err_content.add_widget(err_btn_box)
-                        err_popup.content = err_content
-                        err_popup.open()
+                        show_error_dialog("Duplicate Name", f"An action named '{new_name}' already exists.")
                         return
                 old_name = ca.name
                 ca.name = new_name
@@ -545,15 +536,14 @@ class ScenarioEditorScreen(Screen):
 
             def on_delete(*_):
                 popup.dismiss()
-                confirm = BoxLayout(orientation="vertical", spacing='10dp', padding='10dp')
-                confirm.add_widget(Label(text=f"Delete '{action_data.name}'?"))
-                btn_row = BoxLayout(spacing='10dp', size_hint_y=None, height='40dp')
-                confirm_popup = Popup(title="Confirm", content=confirm, size_hint=(0.35, 0.2))
-                btn_row.add_widget(Button(text="Cancel", on_release=lambda *_: confirm_popup.dismiss()))
-                btn_row.add_widget(Button(text="Delete", background_color=(0.8, 0.2, 0.2, 1),
-                    on_release=lambda *_: (confirm_popup.dismiss(), self._confirm_delete_action(action_data))))
-                confirm.add_widget(btn_row)
-                confirm_popup.open()
+                def on_confirm():
+                    self._confirm_delete_action(action_data)
+                show_confirm_dialog(
+                    title="Confirm",
+                    message=f"Delete '{action_data.name}'?",
+                    on_confirm=on_confirm,
+                    confirm_text="Delete",
+                )
 
             save_btn.bind(on_release=on_save)
             delete_btn.bind(on_release=on_delete)
@@ -564,6 +554,14 @@ class ScenarioEditorScreen(Screen):
 
         content.add_widget(btn_box)
         content.add_widget(Widget())
+
+        scroll = ScrollView(do_scroll_x=False, do_scroll_y=True)
+        scroll.add_widget(content)
+
+        if is_builtin_action or (is_custom and action_data.is_builtin):
+            popup = Popup(title=f"Action: {title}", content=scroll, size_hint=(0.5, 0.65))
+        elif is_custom:
+            popup = Popup(title=f"Custom Action: {title}", content=scroll, size_hint=(0.5, 0.65))
         popup.open()
 
     def _confirm_delete_action(self, action_data):
@@ -588,13 +586,7 @@ class ScenarioEditorScreen(Screen):
                     used_in.add(f"Profile: {p.name}")
         if used_in:
             msg = f"Cannot delete '{action_data.name}'. It is used in:\n" + "\n".join(f"  - {ref}" for ref in used_in)
-            content = BoxLayout(orientation="vertical", spacing='10dp', padding='10dp')
-            content.add_widget(Label(text=msg, font_size="11sp"))
-            btn_box = BoxLayout(spacing='10dp', size_hint_y=None, height='40dp')
-            popup = Popup(title="Action In Use", content=content, size_hint=(0.45, 0.35))
-            btn_box.add_widget(Button(text="OK", on_release=lambda *_: popup.dismiss()))
-            content.add_widget(btn_box)
-            popup.open()
+            show_error_dialog("Action In Use", msg)
             return
         CustomActionStore.delete(action_data.id)
         self._invalidate_ca_cache()
@@ -602,9 +594,9 @@ class ScenarioEditorScreen(Screen):
 
     def _show_create_action_dialog(self):
         import uuid
+        from kivy.uix.scrollview import ScrollView
         from kivy.uix.widget import Widget
         content = BoxLayout(orientation="vertical", spacing='6dp', padding=[dp(10), dp(10)])
-        content.bind(minimum_height=content.setter("height"))
 
         content.add_widget(Label(text="Name:", size_hint_y=None, height='18dp', font_size="11sp", halign="left", color=(0.7, 0.7, 0.7, 1)))
         name_input = TextInput(size_hint_y=None, height='28dp', font_size="12sp", multiline=False)
@@ -642,7 +634,6 @@ class ScenarioEditorScreen(Screen):
         content.add_widget(logic_box)
 
         btn_box = BoxLayout(spacing='10dp', size_hint_y=None, height='36dp')
-        popup = Popup(title="New Custom Action", content=content, size_hint=(0.45, 0.6))
 
         def on_save(*_):
             name = name_input.text.strip()
@@ -650,14 +641,7 @@ class ScenarioEditorScreen(Screen):
                 return
             existing = CustomActionStore.load_all()
             if any(ca.name == name for ca in existing):
-                err_popup = Popup(title="Duplicate Name", size_hint=(0.35, 0.18))
-                err_content = BoxLayout(orientation="vertical", spacing='10dp', padding='10dp')
-                err_content.add_widget(Label(text=f"An action named '{name}' already exists."))
-                err_btn_box = BoxLayout(spacing='10dp', size_hint_y=None, height='40dp')
-                err_btn_box.add_widget(Button(text="OK", on_release=lambda *_: err_popup.dismiss()))
-                err_content.add_widget(err_btn_box)
-                err_popup.content = err_content
-                err_popup.open()
+                show_error_dialog("Duplicate Name", f"An action named '{name}' already exists.")
                 return
             ca = CustomAction(
                 id=str(uuid.uuid4()),
@@ -680,6 +664,10 @@ class ScenarioEditorScreen(Screen):
         btn_box.add_widget(cancel_btn)
         content.add_widget(btn_box)
         content.add_widget(Widget())
+
+        scroll = ScrollView(do_scroll_x=False, do_scroll_y=True)
+        scroll.add_widget(content)
+        popup = Popup(title="New Custom Action", content=scroll, size_hint=(0.5, 0.65))
         popup.open()
 
     def _on_scenario_selected(self, scenario: Scenario):
@@ -1158,26 +1146,14 @@ class ScenarioEditorScreen(Screen):
                         seen.add(name)
         if missing:
             msg = f"Cannot save. Scenario references missing actions:\n" + "\n".join(f"  - {name}" for name in missing)
-            content = BoxLayout(orientation="vertical", spacing='10dp', padding='10dp')
-            content.add_widget(Label(text=msg, font_size="11sp"))
-            btn_box = BoxLayout(spacing='10dp', size_hint_y=None, height='40dp')
-            popup = Popup(title="Missing Actions", content=content, size_hint=(0.45, 0.3))
-            btn_box.add_widget(Button(text="OK", on_release=lambda *_: popup.dismiss()))
-            content.add_widget(btn_box)
-            popup.open()
+            show_error_dialog("Missing Actions", msg)
             return
 
         existing = ScenarioStore.load_all()
         for s in existing:
             if s.name == new_name:
                 if self._current_scenario is None or s.name != self._current_scenario.name:
-                    content = BoxLayout(orientation="vertical", spacing='10dp', padding='10dp')
-                    content.add_widget(Label(text=f"A scenario named '{new_name}' already exists."))
-                    btn_box = BoxLayout(spacing='10dp', size_hint_y=None, height='40dp')
-                    popup = Popup(title="Duplicate Name", content=content, size_hint=(0.35, 0.18))
-                    btn_box.add_widget(Button(text="OK", on_release=lambda *_: popup.dismiss()))
-                    content.add_widget(btn_box)
-                    popup.open()
+                    show_error_dialog("Duplicate Name", f"A scenario named '{new_name}' already exists.")
                     return
 
         scenario = Scenario(
@@ -1201,21 +1177,17 @@ class ScenarioEditorScreen(Screen):
         if not self._current_scenario or self._current_scenario.is_predefined:
             return
 
-        content = BoxLayout(orientation="vertical", spacing='10dp', padding='10dp')
-        content.add_widget(Label(text=f"Delete scenario '{self._current_scenario.name}'?"))
-        btn_box = BoxLayout(spacing='10dp', size_hint_y=None, height='40dp')
-        popup = Popup(title="Confirm", content=content, size_hint=(0.4, 0.3))
-        btn_box.add_widget(Button(text="Cancel", on_release=lambda *_: popup.dismiss()))
-        btn_box.add_widget(Button(
-            text="Delete",
-            background_color=(0.8, 0.2, 0.2, 1),
-            on_release=lambda *_: self._confirm_delete(popup),
-        ))
-        content.add_widget(btn_box)
-        popup.open()
+        def on_confirm():
+            self._confirm_delete()
 
-    def _confirm_delete(self, popup):
-        popup.dismiss()
+        show_confirm_dialog(
+            title="Confirm",
+            message=f"Delete scenario '{self._current_scenario.name}'?",
+            on_confirm=on_confirm,
+            confirm_text="Delete",
+        )
+
+    def _confirm_delete(self):
         if not self._current_scenario:
             return
         ScenarioStore.delete(self._current_scenario.name)
@@ -1233,23 +1205,20 @@ class ScenarioEditorScreen(Screen):
 
     def on_back(self):
         if self._undo_mgr.has_unsaved:
-            content = BoxLayout(orientation="vertical", spacing='10dp', padding='10dp')
-            content.add_widget(Label(text="Save changes before leaving?"))
-            btn_box = BoxLayout(spacing='6dp', size_hint_y=None, height='40dp')
-            popup = Popup(title="Unsaved Changes", content=content, size_hint=(0.45, 0.25))
-            def save_and_leave(*_):
+            def save_and_leave():
                 self.on_save()
-                popup.dismiss()
                 self._navigate_back()
-            def discard_and_leave(*_):
+            def discard_and_leave():
                 self._reset_state()
-                popup.dismiss()
                 self._navigate_back()
-            btn_box.add_widget(Button(text="Save and Leave", size_hint_x=None, width='120dp', on_release=save_and_leave))
-            btn_box.add_widget(Button(text="Discard and Leave", size_hint_x=None, width='120dp', on_release=discard_and_leave))
-            btn_box.add_widget(Button(text="Cancel", size_hint_x=None, width='90dp', on_release=lambda *_: popup.dismiss()))
-            content.add_widget(btn_box)
-            popup.open()
+
+            show_confirm_dialog(
+                title="Unsaved Changes",
+                message="Save changes before leaving?",
+                on_confirm=save_and_leave,
+                confirm_text="Save and Leave",
+                cancel_text="Discard and Leave",
+            )
         else:
             self._navigate_back()
 

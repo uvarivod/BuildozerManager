@@ -1,10 +1,4 @@
-# Help Popups
-
-## Purpose
-
-TBD
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: Each screen has a context-sensitive help button
 The system SHALL display a help button (?) on each screen's top bar that opens a popup explaining the screen's purpose and controls. The popup SHALL be created using `show_info_dialog()` from the dialog helper module.

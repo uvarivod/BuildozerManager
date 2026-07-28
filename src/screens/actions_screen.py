@@ -12,7 +12,7 @@ from src.services.action_runner import ActionRunner
 from src.services.scenario_service import ScenarioService
 from src.services.log_service import LogService
 from src.services.storage_service import ProfileStore, ScenarioStore, SettingsStore, CustomActionStore
-from src.screens.help_popup import show_help_popup
+from src.screens.dialog_helper import show_confirm_dialog, show_error_dialog, show_help_popup
 from src.services.log_cleanup_service import cleanup_logs
 
 
@@ -177,26 +177,18 @@ class ActionsScreen(Screen):
         if not self._active_profile:
             self._log.warn("No profile to delete")
             return
-        from kivy.uix.popup import Popup
-        from kivy.uix.label import Label
-        from kivy.uix.boxlayout import BoxLayout
-        from kivy.uix.button import Button
 
-        content = BoxLayout(orientation="vertical", spacing='10dp', padding='10dp')
-        content.add_widget(Label(text=f"Delete profile '{self._active_profile.name}'?"))
-        btn_box = BoxLayout(spacing='10dp', size_hint_y=None, height='40dp')
-        popup = Popup(title="Confirm", content=content, size_hint=(0.4, 0.3))
-        btn_box.add_widget(Button(text="Cancel", on_release=lambda *_: popup.dismiss()))
-        btn_box.add_widget(Button(
-            text="Delete",
-            background_color=(0.8, 0.2, 0.2, 1),
-            on_release=lambda *_: self._confirm_delete(popup)
-        ))
-        content.add_widget(btn_box)
-        popup.open()
+        def on_confirm():
+            self._confirm_delete()
 
-    def _confirm_delete(self, popup):
-        popup.dismiss()
+        show_confirm_dialog(
+            title="Confirm",
+            message=f"Delete profile '{self._active_profile.name}'?",
+            on_confirm=on_confirm,
+            confirm_text="Delete",
+        )
+
+    def _confirm_delete(self):
         name = self._active_profile.name
         ProfileStore.delete(name)
         self._active_profile = None
@@ -245,16 +237,7 @@ class ActionsScreen(Screen):
                 missing = sorted(set(name for name in scenario.custom_action_names.values() if name not in ca_names))
                 if missing:
                     msg = f"Scenario '{scenario.name}' references missing actions:\n" + "\n".join(f"  - {name}" for name in missing)
-                    from kivy.uix.popup import Popup
-                    from kivy.uix.boxlayout import BoxLayout
-                    from kivy.uix.button import Button
-                    content = BoxLayout(orientation="vertical", spacing='10dp', padding='10dp')
-                    content.add_widget(Label(text=msg, font_size="11sp"))
-                    btn_box = BoxLayout(spacing='10dp', size_hint_y=None, height='40dp')
-                    popup = Popup(title="Missing Actions", content=content, size_hint=(0.45, 0.3))
-                    btn_box.add_widget(Button(text="OK", on_release=lambda *_: popup.dismiss()))
-                    content.add_widget(btn_box)
-                    popup.open()
+                    show_error_dialog("Missing Actions", msg)
                     return
             self._current_scenario = scenario
             self._build_action_chain(scenario)

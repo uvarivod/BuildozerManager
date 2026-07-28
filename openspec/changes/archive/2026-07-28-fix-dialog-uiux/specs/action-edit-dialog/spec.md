@@ -1,10 +1,4 @@
-# Action Edit Dialog
-
-## Purpose
-
-TBD
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: Clicking a palette chip opens edit dialog
 Clicking (touch-up within 10px of touch-down, no drag) on any palette chip SHALL open a Popup dialog showing the action's properties. The dialog title SHALL be the action name. The dialog SHALL be created using `show_form_dialog()` from the dialog helper module for custom actions, or `show_info_dialog()` for built-in actions.
