@@ -14,7 +14,7 @@ from src.models.custom_action import CustomAction, ActionType
 from src.models.profile import Profile
 from src.services.storage_service import ProfileStore, SettingsStore, CustomActionStore
 from src.services.log_service import LogService
-from src.screens.help_popup import show_help_popup
+from src.screens.dialog_helper import show_error_dialog, show_confirm_dialog, show_info_dialog, show_help_popup
 
 
 class ProfileEditorScreen(Screen):
@@ -97,22 +97,15 @@ class ProfileEditorScreen(Screen):
             available = registry_names | custom_patch_names
             missing = [p for p in profile.patches if p not in available]
             if missing:
-                from kivy.uix.popup import Popup
-                from kivy.uix.button import Button
                 msg = (f"Profile '{profile.name}' references missing patches:\n" +
                        "\n".join(f"  - {p}" for p in missing) +
                        "\n\nThey will be removed automatically.")
-                content = BoxLayout(orientation="vertical", spacing='10dp', padding='10dp')
-                content.add_widget(Label(text=msg, font_size="11sp"))
-                btn_box = BoxLayout(spacing='10dp', size_hint_y=None, height='40dp')
-                popup = Popup(title="Missing Patches", content=content, size_hint=(0.45, 0.35))
-                def on_ok(*_):
+
+                def on_ok():
                     self._remove_missing_patches(profile, missing)
                     self._build_patch_selector()
-                    popup.dismiss()
-                btn_box.add_widget(Button(text="OK", on_release=on_ok))
-                content.add_widget(btn_box)
-                popup.open()
+
+                show_info_dialog(title="Missing Patches", message=msg)
 
         self._editing_profile = profile
         self._orig_name = profile.name
@@ -189,42 +182,17 @@ class ProfileEditorScreen(Screen):
         )
 
     def _prompt_use_spec(self, spec_path):
-        from kivy.uix.popup import Popup
-        from kivy.uix.boxlayout import BoxLayout
-        from kivy.uix.label import Label
-        from kivy.uix.button import Button
-
-        content = BoxLayout(orientation="vertical", spacing='10dp', padding='10dp')
-        content.add_widget(
-            Label(
-                text="We found buildozer.spec in the folder you chose.\nDo you want to use it?"
-            )
-        )
-        btn_row = BoxLayout(size_hint_y=None, height='44dp', spacing='10dp')
-        no_btn = Button(text="No")
-        yes_btn = Button(text="Yes", background_color=(0.2, 0.6, 0.2, 1))
-        btn_row.add_widget(no_btn)
-        btn_row.add_widget(yes_btn)
-        content.add_widget(btn_row)
-
-        popup = Popup(
-            title="buildozer.spec Found",
-            content=content,
-            size_hint=(0.5, 0.3),
-            auto_dismiss=False,
-        )
-
-        def on_yes(*_):
+        def on_yes():
             self.spec_path_input.text = spec_path
             self._cursor_end(self.spec_path_input)
-            popup.dismiss()
 
-        def on_no(*_):
-            popup.dismiss()
-
-        yes_btn.bind(on_release=on_yes)
-        no_btn.bind(on_release=on_no)
-        popup.open()
+        show_confirm_dialog(
+            title="buildozer.spec Found",
+            message="We found buildozer.spec in the folder you chose.\nDo you want to use it?",
+            on_confirm=on_yes,
+            confirm_text="Yes",
+            cancel_text="No",
+        )
 
     def _browse_spec_path(self):
         from pathlib import Path
@@ -284,17 +252,9 @@ class ProfileEditorScreen(Screen):
         )
 
     def _check_adb(self):
-        from kivy.uix.popup import Popup
-
         adb_path = self.adb_path_input.text.strip()
         if not adb_path:
-            from kivy.uix.label import Label
-            popup = Popup(
-                title="ADB Check",
-                content=Label(text="No ADB path configured."),
-                size_hint=(0.5, 0.3),
-            )
-            popup.open()
+            show_error_dialog("ADB Check", "No ADB path configured.")
             return
 
         try:
@@ -315,6 +275,7 @@ class ProfileEditorScreen(Screen):
 
         from kivy.uix.textinput import TextInput
         from kivy.uix.boxlayout import BoxLayout
+        from kivy.uix.popup import Popup
         content = BoxLayout()
         text_input = TextInput(
             text=text,
@@ -358,19 +319,11 @@ class ProfileEditorScreen(Screen):
             initial_path=initial_path, on_choose=on_choose_dir
         )
 
-    def _show_error(self, message: str):
-        from kivy.uix.popup import Popup
-        from kivy.uix.label import Label
-        popup = Popup(title="Cannot Save",
-                     content=Label(text=message),
-                     size_hint=(0.5, 0.3))
-        popup.open()
-
     def save(self):
         new_name = self.name_input.text.strip()
 
         if not new_name:
-            self._show_error("Profile name cannot be empty.")
+            show_error_dialog("Cannot Save", "Profile name cannot be empty.")
             return
 
         profiles = ProfileStore.load_all()
@@ -378,13 +331,13 @@ class ProfileEditorScreen(Screen):
 
         if self._editing_profile is None:
             if name_taken:
-                self._show_error(f'A profile named "{new_name}" already exists.')
+                show_error_dialog("Cannot Save", f'A profile named "{new_name}" already exists.')
                 return
             updated = self._build_profile(new_name)
             profiles.append(updated)
         else:
             if name_taken and new_name != self._orig_name:
-                self._show_error(f'A profile named "{new_name}" already exists.')
+                show_error_dialog("Cannot Save", f'A profile named "{new_name}" already exists.')
                 return
             profiles = [p for p in profiles if p.name != self._orig_name]
             updated = self._build_profile(new_name)

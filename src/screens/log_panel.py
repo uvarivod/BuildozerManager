@@ -1,14 +1,11 @@
 from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.textinput import TextInput
 from kivy.properties import StringProperty, ObjectProperty
 from kivy.clock import Clock
-from kivy.uix.popup import Popup
-from kivy.uix.label import Label
-from kivy.uix.button import Button
-from kivy.uix.textinput import TextInput
 from kivy.core.window import Window
 from src.services.log_service import LogService, LogEvent
 from src.services.storage_service import SettingsStore
-from src.screens.help_popup import show_help_popup
+from src.screens.dialog_helper import show_form_dialog, show_help_popup
 
 
 MAX_LOG_LINES = 1000
@@ -191,13 +188,8 @@ class LogPanel(BoxLayout):
         default_name = f"buildozer_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
         default_path = str(log_dir / default_name)
 
-        box = BoxLayout(orientation="vertical", padding='10dp', spacing='10dp')
-        box.add_widget(Label(text="Filename:", halign="left", size_hint_y=None, height='20dp'))
-        filename_input = TextInput(text=default_path, multiline=False)
-        box.add_widget(filename_input)
-
-        def on_save(btn):
-            path = filename_input.text.strip()
+        def on_save(fields):
+            path = fields.get("Filename", "").strip()
             if not path:
                 return
             if not path.endswith(".log"):
@@ -206,16 +198,11 @@ class LogPanel(BoxLayout):
             full.parent.mkdir(parents=True, exist_ok=True)
             with open(str(full), "w", encoding="utf-8") as f:
                 f.write(content)
-            popup.dismiss()
 
-        btn_box = BoxLayout(size_hint_y=None, height='40dp', spacing='8dp')
-        btn_save = Button(text="Save")
-        btn_save.bind(on_release=on_save)
-        btn_box.add_widget(btn_save)
-        btn_cancel = Button(text="Cancel")
-        btn_cancel.bind(on_release=lambda x: popup.dismiss())
-        btn_box.add_widget(btn_cancel)
-        box.add_widget(btn_box)
-
-        popup = Popup(title="Save Log", content=box, size_hint=(0.5, 0.3))
-        popup.open()
+        show_form_dialog(
+            title="Save Log",
+            fields=["Filename"],
+            on_save=on_save,
+            save_text="Save",
+            cancel_text="Cancel",
+        )
