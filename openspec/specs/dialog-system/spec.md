@@ -95,3 +95,11 @@ The dialog helper SHALL use standardized sizes: info (0.4, 0.25), confirm (0.45,
 #### Scenario: Dialog uses correct size
 - **WHEN** `show_error_dialog()` is called
 - **THEN** the popup size is (0.5, 0.3) relative to parent
+
+### Requirement: Dialog dismissal does not exit the application
+When a dialog is dismissed via the Escape key, the application SHALL remain running.
+
+#### Scenario: Dismissing a dialog with Escape keeps the app open
+- **WHEN** a dialog is open and the user presses Escape
+- **THEN** the dialog dismisses
+- **THEN** the application remains running
