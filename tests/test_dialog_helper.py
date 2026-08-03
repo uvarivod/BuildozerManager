@@ -313,3 +313,21 @@ class TestShowHelpPopup:
         dialog_helper.show_help_popup("H", "B")
         _, kwargs = kivy_mocks["Popup"].call_args
         assert kwargs.get("size_hint") == (0.6, 0.5)
+
+
+# ---------------------------------------------------------------------------
+# Escape key behavior (dialog dismissal must not close the application)
+# ---------------------------------------------------------------------------
+
+class TestEscapeKeyDoesNotExitApp:
+    def test_escape_dismisses_open_dialog_without_closing_window(self, kivy_mocks):
+        popup = MagicMock(name="popup")
+        dialog_helper._on_key_down(popup, kivy_mocks["Window"], 27, 1, "", [])
+        popup.dismiss.assert_called_once()
+        kivy_mocks["Window"].close.assert_not_called()
+
+    def test_escape_handler_never_requests_window_close(self, kivy_mocks):
+        popup = MagicMock(name="popup")
+        result = dialog_helper._on_key_down(popup, kivy_mocks["Window"], 27, 1, "", [])
+        assert result is None
+        kivy_mocks["Window"].close.assert_not_called()

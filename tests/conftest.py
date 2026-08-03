@@ -18,11 +18,15 @@ class _KivyModule:
 def _build_kivy_tree():
     kivy = _KivyModule()
 
+    kivy.app = _KivyModule()
+    kivy.app.App = MagicMock(name="App")
+
     kivy.uix = _KivyModule()
     kivy.uix.screenmanager = _KivyModule()
     class MockScreen:
         pass
     kivy.uix.screenmanager.Screen = MockScreen
+    kivy.uix.screenmanager.ScreenManager = MagicMock(name="ScreenManager")
     kivy.uix.boxlayout = _KivyModule()
     class MockBoxLayout:
         def __init__(self, **kwargs):
@@ -52,6 +56,9 @@ def _build_kivy_tree():
     kivy.uix.togglebutton = _KivyModule()
     kivy.uix.togglebutton.ToggleButton = MagicMock(name="ToggleButton")
 
+    kivy.lang = _KivyModule()
+    kivy.lang.Builder = MagicMock(name="Builder")
+
     kivy.properties = _KivyModule()
     kivy.properties.ObjectProperty = MagicMock(name="ObjectProperty")
     kivy.properties.StringProperty = MagicMock(name="StringProperty")
@@ -69,6 +76,10 @@ def _build_kivy_tree():
     kivy.clock = _KivyModule()
     kivy.clock.Clock = MagicMock(name="Clock")
 
+    kivy.config = _KivyModule()
+    kivy.config.Config = MagicMock(name="Config")
+    kivy.Config = kivy.config.Config
+
     return kivy
 
 
@@ -78,6 +89,7 @@ _KIVY = _build_kivy_tree()
 def _install_kivy():
     k = _KIVY
     sys.modules["kivy"] = k
+    sys.modules["kivy.app"] = k.app
     sys.modules["kivy.uix"] = k.uix
     sys.modules["kivy.uix.screenmanager"] = k.uix.screenmanager
     sys.modules["kivy.uix.boxlayout"] = k.uix.boxlayout
@@ -90,11 +102,13 @@ def _install_kivy():
     sys.modules["kivy.uix.scrollview"] = k.uix.scrollview
     sys.modules["kivy.uix.filechooser"] = k.uix.filechooser
     sys.modules["kivy.uix.togglebutton"] = k.uix.togglebutton
+    sys.modules["kivy.lang"] = k.lang
     sys.modules["kivy.properties"] = k.properties
     sys.modules["kivy.metrics"] = k.metrics
     sys.modules["kivy.core"] = k.core
     sys.modules["kivy.core.window"] = k.core.window
     sys.modules["kivy.clock"] = k.clock
+    sys.modules["kivy.config"] = k.config
 
 
 def pytest_configure():
@@ -146,4 +160,5 @@ def kivy_mocks():
         "dp": k.metrics.dp,
         "Window": k.core.window.Window,
         "Clock": k.clock.Clock,
+        "Config": k.config.Config,
     }
