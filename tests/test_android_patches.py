@@ -120,6 +120,17 @@ class TestPatchBackFunctionality:
         result = patch_back_functionality(Path("."), profile=None, log_callback=None)
         assert result is True
 
+    def test_utf8_buildozer_spec_encoding(self):
+        from src.patches.android_patches import _get_template_paths
+        with tempfile.TemporaryDirectory() as tmp:
+            spec_path = os.path.join(tmp, "buildozer.spec")
+            content = "[app]\npackage.name = myapp\nandroid.archs = arm64-v8a\n# Comment with utf-8: café \x81\n"
+            with open(spec_path, "wb") as f:
+                f.write(content.encode("utf-8", errors="replace"))
+            p = Profile(name="test", wsl_dir=tmp, sourcedir=tmp, spec_path=spec_path)
+            templates = _get_template_paths(Path(tmp), profile=p)
+            assert isinstance(templates, list)
+
 
 class TestPatchActivityTheme:
     def test_missing_buildozer_dir(self):

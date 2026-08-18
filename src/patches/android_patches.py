@@ -23,8 +23,8 @@ def _get_template_paths(buildozer_path: Path, profile=None) -> list[str]:
     package_name = None
     for sp in spec_paths:
         config = configparser.ConfigParser()
-        config.read(sp)
         try:
+            config.read(sp, encoding="utf-8")
             archs = config.get("app", "android.archs")
             archs_joined = "_".join(a.strip() for a in archs.split(","))
             package_name = config.get("app", "package.name")
@@ -58,8 +58,8 @@ def _get_archs_and_package(buildozer_path: Path, profile=None):
 
     for sp in spec_paths:
         config = configparser.ConfigParser()
-        config.read(sp)
         try:
+            config.read(sp, encoding="utf-8")
             archs = config.get("app", "android.archs")
             archs_joined = "_".join(a.strip() for a in archs.split(","))
             package_name = config.get("app", "package.name")
