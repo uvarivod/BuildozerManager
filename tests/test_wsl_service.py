@@ -155,6 +155,43 @@ class TestNoiseFiltering:
         assert not service._GCC_CONT_RE.match("[INFO]")
 
 
+class TestWslAccessiblePath:
+    def test_windows_path_converted(self, service):
+        result = service._wsl_accessible_path(r"C:\PycharmProjects\cs2\bin\my.keystore")
+        assert result == "/mnt/c/PycharmProjects/cs2/bin/my.keystore"
+
+    def test_windows_path_lowercase_drive(self, service):
+        result = service._wsl_accessible_path(r"D:\certs\key.jks")
+        assert result == "/mnt/d/certs/key.jks"
+
+    def test_linux_path_unchanged(self, service):
+        result = service._wsl_accessible_path("/home/alex/keys/my.keystore")
+        assert result == "/home/alex/keys/my.keystore"
+
+    def test_forward_slash_windows_path(self, service):
+        result = service._wsl_accessible_path("E:/certs/key.store")
+        assert result == "/mnt/e/certs/key.store"
+
+    def test_mixed_backslashes_converted(self, service):
+        result = service._wsl_accessible_path(r"F:\certs\sub\key.jks")
+        assert result == "/mnt/f/certs/sub/key.jks"
+
+    def test_whitespace_stripped(self, service):
+        result = service._wsl_accessible_path(r"  C:\certs\key.jks  ")
+        assert result == "/mnt/c/certs/key.jks"
+
+
+class TestShq:
+    def test_plain_value_unchanged(self, service):
+        assert service._shq("keystore.jks") == "keystore.jks"
+
+    def test_value_with_spaces(self, service):
+        assert service._shq("my keystore.jks") == "my keystore.jks"
+
+    def test_single_quote_escaped(self, service):
+        assert service._shq("it's") == "it'\\''s"
+
+
 def simple_profile(wsl_dir="/home/user", wsl_distro="Ubuntu", **kwargs):
     from src.models.profile import Profile
     return Profile(
@@ -285,3 +322,264 @@ class TestCleanWslProject:
             simple_profile(), log_callback=mock_log_callback
         )
         assert result is True
+
+
+class TestDeriveSignedName:
+    def test_release_suffix_replaced(self):
+        assert WSLService._derive_signed_name("MyApp-release.aab") == "MyApp-signed.aab"
+
+    def test_no_release_suffix_appends_signed(self):
+        assert WSLService._derive_signed_name("MyApp.aab") == "MyApp-signed.aab"
+
+    def test_other_suffix_appends_signed(self):
+        assert WSLService._derive_signed_name("MyApp-debug.aab") == "MyApp-debug-signed.aab"
+
+
+class TestCheckSigningTools:
+    def test_returns_false_when_wsl_fields_missing(self, service):
+        ok, err = service.check_signing_tools(simple_profile(wsl_dir="", wsl_distro=""))
+        assert ok is False
+        assert "WSL Build Directory" in err
+
+    def test_success_when_tools_found(self, service, monkeypatch):
+        profile = simple_profile()
+        class FakeResult:
+            returncode = 0
+            stdout = "/usr/bin/jarsigner\n/usr/bin/zipalign\n"
+            stderr = ""
+        called = {}
+        def fake_run(cmd, **kw):
+            called["cmd"] = cmd
+            return FakeResult()
+        monkeypatch.setattr("src.services.wsl_service.subprocess.run", fake_run)
+
+        ok, err = service.check_signing_tools(profile)
+        assert ok is True
+        assert err == ""
+        assert called["cmd"][:3] == ["wsl.exe", "--distribution", "Ubuntu"]
+
+    def test_zipalign_checked_by_command_only(self, service, monkeypatch):
+        profile = simple_profile()
+        results = iter([
+            type("R", (), {"returncode": 0, "stdout": "/usr/bin/jarsigner", "stderr": ""})(),
+            type("R", (), {"returncode": 0, "stdout": "/usr/bin/zipalign", "stderr": ""})(),
+        ])
+        captured = []
+        def fake_run(cmd, **kw):
+            captured.append(cmd)
+            return next(results)
+        monkeypatch.setattr("src.services.wsl_service.subprocess.run", fake_run)
+
+        ok, err = service.check_signing_tools(profile)
+        assert ok is True
+        assert err == ""
+        zipalign_cmd = " ".join(captured[1][3:])
+        assert "command -v zipalign" in zipalign_cmd
+        assert "zipalign -h" not in zipalign_cmd
+
+    def test_failure_when_tools_missing(self, service, monkeypatch):
+        class FakeResult:
+            returncode = 1
+            stdout = ""
+            stderr = "jarsigner: command not found"
+        monkeypatch.setattr("src.services.wsl_service.subprocess.run", lambda *a, **kw: FakeResult())
+
+        ok, err = service.check_signing_tools(simple_profile())
+        assert ok is False
+        assert err == "jarsigner,zipalign"
+
+    def test_failure_reports_only_missing_tool(self, service, monkeypatch):
+        profile = simple_profile()
+        results = iter([
+            type("R", (), {"returncode": 0, "stdout": "/usr/bin/jarsigner", "stderr": ""})(),
+            type("R", (), {"returncode": 1, "stdout": "", "stderr": "zipalign: not found"})(),
+        ])
+        monkeypatch.setattr("src.services.wsl_service.subprocess.run", lambda *a, **kw: next(results))
+
+        ok, err = service.check_signing_tools(profile)
+        assert ok is False
+        assert err == "zipalign"
+
+    def test_timeout_returns_failure(self, service, monkeypatch):
+        import subprocess
+        def raise_timeout(*a, **kw):
+            raise subprocess.TimeoutExpired("wsl.exe", 30)
+        monkeypatch.setattr("src.services.wsl_service.subprocess.run", raise_timeout)
+
+        ok, err = service.check_signing_tools(simple_profile())
+        assert ok is False
+        assert "timed out" in err
+
+    def test_wsl_not_found_returns_failure(self, service, monkeypatch):
+        def raise_not_found(*a, **kw):
+            raise FileNotFoundError("wsl.exe")
+        monkeypatch.setattr("src.services.wsl_service.subprocess.run", raise_not_found)
+
+        ok, err = service.check_signing_tools(simple_profile())
+        assert ok is False
+        assert "wsl.exe not found" in err
+
+    def test_generic_exception_returns_failure(self, service, monkeypatch):
+        def raise_error(*a, **kw):
+            raise RuntimeError("boom")
+        monkeypatch.setattr("src.services.wsl_service.subprocess.run", raise_error)
+
+        ok, err = service.check_signing_tools(simple_profile())
+        assert ok is False
+        assert "boom" in err
+
+
+class TestSignApk:
+    def test_missing_aab_returns_failure(self, service, monkeypatch):
+        profile = simple_profile(cert_path="/certs/release.keystore", cert_password="pass")
+        class FakeProcess:
+            def __init__(self):
+                self.stdout = ["SIGNING_ERROR: No *.aab file found in bin directory\n"]
+                self.returncode = 1
+            def wait(self):
+                return 0
+        monkeypatch.setattr("src.services.wsl_service.subprocess.Popen", lambda *a, **kw: FakeProcess())
+
+        result = service.sign_apk(profile)
+        assert result is False
+
+    def test_success_copies_signed_aab_back(self, service, monkeypatch):
+        profile = simple_profile(cert_path="/certs/release.keystore", cert_password="pass")
+        class FakeProcess:
+            def __init__(self):
+                self.stdout = [
+                    "[SIGN] Found AAB: MyApp-release.aab\n",
+                    "[SIGN] Signing with jarsigner...\n",
+                    "[SIGN] Aligning with zipalign...\n",
+                    "[SIGN] Output file: MyApp-signed.aab\n",
+                    "[/home/user/signing_android_app/MyApp-signed.aab]\n",
+                ]
+                self.returncode = 0
+            def wait(self):
+                return 0
+        monkeypatch.setattr("src.services.wsl_service.subprocess.Popen", lambda *a, **kw: FakeProcess())
+
+        result = service.sign_apk(profile)
+        assert result is True
+
+    def test_jarsigner_failure_stops_signing(self, service, monkeypatch):
+        profile = simple_profile(cert_path="/certs/release.keystore", cert_password="pass")
+        class FakeProcess:
+            def __init__(self):
+                self.stdout = [
+                    "[SIGN] Found AAB: MyApp-release.aab\n",
+                    "SIGNING_ERROR: jarsigner failed\n",
+                ]
+                self.returncode = 1
+            def wait(self):
+                return 0
+        monkeypatch.setattr("src.services.wsl_service.subprocess.Popen", lambda *a, **kw: FakeProcess())
+
+        result = service.sign_apk(profile)
+        assert result is False
+
+    def test_cancel_before_start_returns_false(self, service, monkeypatch):
+        profile = simple_profile(cert_path="/certs/release.keystore", cert_password="pass")
+        result = service.sign_apk(profile, cancel_check=lambda: True)
+        assert result is False
+
+    def test_windows_cert_path_converted_to_wsl(self, service, monkeypatch):
+        profile = simple_profile(cert_path=r"C:\PycharmProjects\cs2companion\buildignore\my.keystore", cert_password="pass")
+        class FakeProcess:
+            def __init__(self):
+                self.stdout = [
+                    "[SIGN] Found AAB: MyApp-release.aab\n",
+                    "[SIGN] Signing with jarsigner...\n",
+                    "[SIGN] Aligning with zipalign...\n",
+                    "[SIGN] Output file: MyApp-signed.aab\n",
+                ]
+                self.returncode = 0
+            def wait(self):
+                return 0
+        captured = {}
+        def fake_popen(cmd, **kw):
+            captured["cmd"] = cmd
+            return FakeProcess()
+        monkeypatch.setattr("src.services.wsl_service.subprocess.Popen", fake_popen)
+
+        result = service.sign_apk(profile)
+        assert result is True
+        inner = captured["cmd"][-1]
+        assert "/mnt/c/PycharmProjects/cs2companion/buildignore/my.keystore" in inner
+
+    def test_jarsigner_supplies_storepass_and_closes_stdin(self, service, monkeypatch):
+        profile = simple_profile(cert_path="/certs/release.keystore", cert_password="secret-pass")
+        class FakeProcess:
+            def __init__(self):
+                self.stdout = [
+                    "[SIGN] Found AAB: MyApp-release.aab\n",
+                    "[SIGN] Signing with jarsigner...\n",
+                    "[SIGN] Aligning with zipalign...\n",
+                    "[SIGN] Output file: MyApp-signed.aab\n",
+                ]
+                self.returncode = 0
+            def wait(self):
+                return 0
+        captured = {}
+        def fake_popen(cmd, **kw):
+            captured["cmd"] = cmd
+            return FakeProcess()
+        monkeypatch.setattr("src.services.wsl_service.subprocess.Popen", fake_popen)
+
+        result = service.sign_apk(profile)
+        assert result is True
+        inner = captured["cmd"][-1]
+        assert "-storepass secret-pass" in inner
+        assert "-keypass secret-pass" in inner
+        assert "< /dev/null" in inner
+
+    def test_zipalign_failure_stops_signing(self, service, monkeypatch):
+        profile = simple_profile(cert_path="/certs/release.keystore", cert_password="pass")
+        class FakeProcess:
+            def __init__(self):
+                self.stdout = [
+                    "[SIGN] Found AAB: MyApp-release.aab\n",
+                    "SIGNING_ERROR: zipalign failed\n",
+                ]
+                self.returncode = 1
+            def wait(self):
+                return 0
+        monkeypatch.setattr("src.services.wsl_service.subprocess.Popen", lambda *a, **kw: FakeProcess())
+
+        result = service.sign_apk(profile)
+        assert result is False
+
+    def test_sign_apk_wsl_missing_returns_false(self, service, monkeypatch):
+        profile = simple_profile(cert_path="/certs/release.keystore", cert_password="pass")
+        def raise_not_found(*a, **kw):
+            raise FileNotFoundError("wsl.exe")
+        monkeypatch.setattr("src.services.wsl_service.subprocess.Popen", raise_not_found)
+
+        result = service.sign_apk(profile)
+        assert result is False
+
+    def test_sign_apk_generic_exception_returns_false(self, service, monkeypatch):
+        profile = simple_profile(cert_path="/certs/release.keystore", cert_password="pass")
+        def raise_error(*a, **kw):
+            raise RuntimeError("wsl failed to start")
+        monkeypatch.setattr("src.services.wsl_service.subprocess.Popen", raise_error)
+
+        result = service.sign_apk(profile)
+        assert result is False
+
+    def test_sign_apk_captures_signing_error_with_nonzero_exit(self, service, monkeypatch):
+        profile = simple_profile(cert_path="/certs/release.keystore", cert_password="pass")
+        captured = []
+        class FakeProcess:
+            def __init__(self):
+                self.stdout = [
+                    "[SIGN] Found AAB: MyApp-release.aab\n",
+                    "SIGNING_ERROR: jarsigner failed\n",
+                ]
+                self.returncode = 1
+            def wait(self):
+                return 0
+        monkeypatch.setattr("src.services.wsl_service.subprocess.Popen", lambda *a, **kw: FakeProcess())
+
+        result = service.sign_apk(profile)
+        assert result is False
