@@ -33,3 +33,7 @@ The patch SHALL iterate all 3 AndroidManifest template paths derived from buildo
 #### Scenario: Patch iterates all three paths
 - **WHEN** `patch_back_functionality` runs
 - **THEN** it SHALL attempt to patch all 3 template file paths and log success/failure for each
+
+#### Scenario: buildozer.spec with UTF-8 content
+- **WHEN** `patch_back_functionality` runs and the `buildozer.spec` file contains UTF-8 encoded content (e.g., non-ASCII characters in comments or values)
+- **THEN** the patch SHALL read the spec file using UTF-8 encoding and still resolve the 3 template paths without a decoding error
