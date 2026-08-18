@@ -17,6 +17,11 @@ def screen():
     s.wsl_distro_input = MagicMock()
     s.excluded_files_input = MagicMock()
     s.patches_container = MagicMock()
+    s.delete_exclusions_input = MagicMock()
+    s.cert_path_input = MagicMock()
+    s.cert_password_input = MagicMock()
+    s.signing_check_label = MagicMock()
+    s.signing_check_label.text = ""
     s.manager = MagicMock()
     return s
 
@@ -322,6 +327,122 @@ class TestPromptUseSpec:
             on_confirm()
 
         assert screen.spec_path_input.text == "/path/buildozer.spec"
+
+
+# ---------------------------------------------------------------------------
+# Certificate fields: load / save / browse / check
+# ---------------------------------------------------------------------------
+
+class TestCertFields:
+    def test_load_populates_cert_fields(self, screen):
+        profile = Profile(name="test", patches=[], cert_path="/certs/release.keystore", cert_password="secret")
+        with patch("src.screens.profile_editor_screen.ProfileStore") as mock_store:
+            mock_store.load_all.return_value = [profile]
+            screen.load_profile(profile)
+
+        assert screen.cert_path_input.text == "/certs/release.keystore"
+        assert screen.cert_password_input.text == "secret"
+        assert screen.signing_check_label.text == ""
+
+    def test_clear_fields_clears_cert_fields(self, screen):
+        screen.cert_path_input.text = "/old/cert"
+        screen.cert_password_input.text = "oldpass"
+        screen.signing_check_label.text = "jarsigner & zipalign OK"
+        screen.clear_fields()
+
+        assert screen.cert_path_input.text == ""
+        assert screen.cert_password_input.text == ""
+        assert screen.signing_check_label.text == ""
+
+    def test_save_persists_cert_fields(self, screen):
+        screen.name_input.text = "cert-profile"
+        screen.cert_path_input.text = "/certs/release.keystore"
+        screen.cert_password_input.text = "p@ss"
+        screen.sourcedir_input.text = ""
+        screen._editing_profile = None
+        screen._patch_checkboxes = {}
+
+        with patch("src.screens.profile_editor_screen.ProfileStore") as mock_store:
+            with patch("src.screens.profile_editor_screen.SettingsStore"):
+                mock_store.load_all.return_value = []
+                screen.save()
+
+        saved = mock_store.save_all.call_args[0][0][0]
+        assert saved.cert_path == "/certs/release.keystore"
+        assert saved.cert_password == "p@ss"
+
+    def test_browse_cert_path_opens_chooser(self, screen):
+        screen.sourcedir_input.text = "/src"
+        screen.cert_path_input.text = ""
+        with patch("src.screens.file_chooser_helper.FileChooserHelper.show_file_chooser") as mock_chooser:
+            screen._browse_cert_path()
+
+        _, kwargs = mock_chooser.call_args
+        assert kwargs["target_filename"] == "*"
+        on_choose = kwargs["on_choose"]
+        on_choose("/certs/keystore.jks")
+        assert screen.cert_path_input.text == "/certs/keystore.jks"
+
+    def test_check_signing_tools_missing_wsl_fields(self, screen):
+        screen.wsl_dir_input.text = ""
+        screen.wsl_distro_input.text = ""
+        with patch("src.screens.profile_editor_screen.show_error_dialog") as mock_error:
+            screen._check_signing_tools()
+
+        mock_error.assert_called_once()
+        assert "missing" in mock_error.call_args[0][1]
+
+    def test_check_signing_tools_success_sets_marker(self, screen):
+        screen.wsl_dir_input.text = "/wsl"
+        screen.wsl_distro_input.text = "Ubuntu"
+        with patch("src.services.wsl_service.WSLService") as mock_svc:
+            mock_svc.return_value.check_signing_tools.return_value = (True, "")
+            screen._check_signing_tools()
+
+        assert screen.signing_check_label.text == "jarsigner & zipalign OK"
+        assert screen.signing_check_label.color == (0.3, 0.9, 0.4, 1)
+
+    def test_check_signing_tools_failure_shows_popup(self, screen):
+        screen.wsl_dir_input.text = "/wsl"
+        screen.wsl_distro_input.text = "Ubuntu"
+        with patch("src.services.wsl_service.WSLService") as mock_svc:
+            mock_svc.return_value.check_signing_tools.return_value = (False, "zipalign")
+            with patch("src.screens.profile_editor_screen.show_error_dialog") as mock_error:
+                screen._check_signing_tools()
+
+        mock_error.assert_called_once()
+        title, msg = mock_error.call_args[0]
+        assert title == "Signing Tools Check"
+        assert "zipalign Not Found" in msg
+        assert "<jarsigner>" not in msg
+        assert "should be installed in WSL and added to PATH" in msg
+        assert "Signing Android App Action only" in msg
+        assert screen.signing_check_label.text == "jarsigner/zipalign Not Found"
+        assert screen.signing_check_label.color == (0.9, 0.3, 0.3, 1)
+
+    def test_check_signing_tools_failure_uses_detail_as_missing(self, screen):
+        screen.wsl_dir_input.text = "/wsl"
+        screen.wsl_distro_input.text = "Ubuntu"
+        with patch("src.services.wsl_service.WSLService") as mock_svc:
+            mock_svc.return_value.check_signing_tools.return_value = (False, "jarsigner,zipalign")
+            with patch("src.screens.profile_editor_screen.show_error_dialog") as mock_error:
+                screen._check_signing_tools()
+
+        _, msg = mock_error.call_args[0]
+        assert "jarsigner,zipalign Not Found" in msg
+        assert "jarsigner,zipalign should be installed" in msg
+
+    def test_check_signing_tools_failure_empty_detail_falls_back(self, screen):
+        screen.wsl_dir_input.text = "/wsl"
+        screen.wsl_distro_input.text = "Ubuntu"
+        with patch("src.services.wsl_service.WSLService") as mock_svc:
+            mock_svc.return_value.check_signing_tools.return_value = (False, "")
+            with patch("src.screens.profile_editor_screen.show_error_dialog") as mock_error:
+                screen._check_signing_tools()
+
+        _, msg = mock_error.call_args[0]
+        assert "<jarsigner>,<zipalign> Not Found" in msg
+        assert "jarsigner/zipalign Not Found" in screen.signing_check_label.text
 
 
 # ---------------------------------------------------------------------------

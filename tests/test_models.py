@@ -50,6 +50,10 @@ class TestAction:
         assert Action.PATCH.name == "PATCH"
         assert Action.PULL_APK.name == "PULL_APK"
         assert Action.RUN.name == "RUN"
+        assert Action.SIGN_APK.name == "SIGN_APK"
+
+    def test_sign_apk_description(self):
+        assert Action.SIGN_APK.description == "Sign Android App (AAB)"
 
     def test_all_enum_values_unique(self):
         values = [a.value for a in Action]

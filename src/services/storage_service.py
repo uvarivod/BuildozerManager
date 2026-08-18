@@ -1,3 +1,4 @@
+import base64
 import json
 from pathlib import Path
 
@@ -5,9 +6,23 @@ from src.models.action import Action
 from src.models.profile import Profile
 from src.models.scenario import Scenario
 
-_PROFILE_FIELDS = {"name", "sourcedir", "spec_path", "adb_path", "excluded_files", "wsl_dir", "wsl_distro", "patches", "delete_exclusions"}
+_PROFILE_FIELDS = {"name", "sourcedir", "spec_path", "adb_path", "excluded_files", "wsl_dir", "wsl_distro", "patches", "delete_exclusions", "cert_path", "cert_password"}
 
 DATA_DIR = Path(__file__).resolve().parent.parent.parent / "data"
+
+
+def _encode_cert_password(value: str) -> str:
+    return base64.b64encode(value.encode("utf-8")).decode("ascii")
+
+
+def _decode_cert_password(value: str) -> str:
+    if not value:
+        return ""
+    try:
+        decoded = base64.b64decode(value.encode("ascii"), validate=True).decode("utf-8")
+        return decoded
+    except (UnicodeDecodeError, ValueError):
+        return value
 
 
 def _ensure_data_dir():
@@ -38,10 +53,15 @@ class ProfileStore:
     def load_all() -> list[Profile]:
         data = _read_json("profiles.json")
         if isinstance(data, list):
-            return [
-                Profile(**{k: v for k, v in item.items() if k in _PROFILE_FIELDS})
-                for item in data
-            ]
+            result = []
+            for item in data:
+                try:
+                    p = Profile(**{k: v for k, v in item.items() if k in _PROFILE_FIELDS})
+                    p.cert_password = _decode_cert_password(p.cert_password)
+                    result.append(p)
+                except Exception:
+                    continue
+            return result
         return []
 
     @staticmethod
@@ -57,6 +77,8 @@ class ProfileStore:
                 "wsl_distro": p.wsl_distro,
                 "patches": p.patches,
                 "delete_exclusions": p.delete_exclusions,
+                "cert_path": p.cert_path,
+                "cert_password": _encode_cert_password(p.cert_password),
             }
             for p in profiles
         ])

@@ -102,6 +102,25 @@ class TestValidateAction:
         missing = ActionRunner.validate_action(None, p)
         assert missing == []
 
+    def test_sign_apk_requires_cert_and_wsl(self):
+        p = Profile(name="test", wsl_distro="")
+        missing = ActionRunner.validate_action(Action.SIGN_APK, p)
+        assert "cert_path" in missing
+        assert "cert_password" in missing
+        assert "wsl_dir" in missing
+        assert "wsl_distro" in missing
+
+    def test_sign_apk_valid(self):
+        p = Profile(
+            name="test",
+            cert_path="/certs/release.keystore",
+            cert_password="pass",
+            wsl_dir="/wsl",
+            wsl_distro="Ubuntu",
+        )
+        missing = ActionRunner.validate_action(Action.SIGN_APK, p)
+        assert missing == []
+
 
 class TestRunAction:
     @patch("src.services.action_runner.APKService")
@@ -222,3 +241,67 @@ class TestRunAction:
         )
         state = runner.run_action(Action.PULL_APK, profile)
         assert state == ActionState.FAILED
+
+    def test_sign_apk_missing_fields_fails(self):
+        runner = ActionRunner()
+        profile = Profile(name="test", wsl_dir="/wsl", wsl_distro="Ubuntu")
+        state = runner.run_action(Action.SIGN_APK, profile)
+        assert state == ActionState.FAILED
+
+    def test_sign_apk_stops_when_wsl_not_running(self):
+        runner = ActionRunner()
+        runner._wsl.check_wsl_running = MagicMock(return_value=False)
+        profile = Profile(
+            name="test",
+            cert_path="/certs/release.keystore",
+            cert_password="pass",
+            wsl_dir="/wsl",
+            wsl_distro="Ubuntu",
+        )
+        state = runner.run_action(Action.SIGN_APK, profile)
+        assert state == ActionState.FAILED
+
+    def test_sign_apk_success(self):
+        runner = ActionRunner()
+        runner._wsl.check_wsl_running = MagicMock(return_value=True)
+        runner._wsl.sign_apk = MagicMock(return_value=True)
+        profile = Profile(
+            name="test",
+            cert_path="/certs/release.keystore",
+            cert_password="pass",
+            wsl_dir="/wsl",
+            wsl_distro="Ubuntu",
+        )
+        state = runner.run_action(Action.SIGN_APK, profile)
+        assert state == ActionState.SUCCESS
+
+    def test_sign_apk_failure(self):
+        runner = ActionRunner()
+        runner._wsl.check_wsl_running = MagicMock(return_value=True)
+        runner._wsl.sign_apk = MagicMock(return_value=False)
+        profile = Profile(
+            name="test",
+            cert_path="/certs/release.keystore",
+            cert_password="pass",
+            wsl_dir="/wsl",
+            wsl_distro="Ubuntu",
+        )
+        state = runner.run_action(Action.SIGN_APK, profile)
+        assert state == ActionState.FAILED
+
+    def test_sign_apk_cancelled(self):
+        runner = ActionRunner()
+        runner._wsl.check_wsl_running = MagicMock(return_value=True)
+        def sign_apk(profile, log_cb, cancel_check):
+            runner.cancel()
+            return True
+        runner._wsl.sign_apk = MagicMock(side_effect=sign_apk)
+        profile = Profile(
+            name="test",
+            cert_path="/certs/release.keystore",
+            cert_password="pass",
+            wsl_dir="/wsl",
+            wsl_distro="Ubuntu",
+        )
+        state = runner.run_action(Action.SIGN_APK, profile)
+        assert state == ActionState.CANCELLED

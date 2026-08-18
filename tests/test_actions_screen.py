@@ -111,6 +111,39 @@ class TestOnScenarioSelected:
         mock_build.assert_called_once_with(scenario)
 
 
+class TestActionChain:
+    def test_builds_card_for_sign_apk(self, screen):
+        from src.models.action import Action
+        from src.models.scenario import Scenario
+        from src.screens.action_card import ActionCard
+
+        scenario = Scenario(name="sign", action_sequence=[Action.SIGN_APK])
+        screen.chain_container = MagicMock()
+        screen._active_profile = MagicMock()
+
+        screen._build_action_chain(scenario)
+
+        assert len(screen._action_cards) == 1
+        assert isinstance(screen._action_cards[0], ActionCard)
+        assert screen._action_cards[0].action == Action.SIGN_APK
+
+    def test_builds_card_in_full_chain(self, screen):
+        from src.models.action import Action
+        from src.models.scenario import Scenario
+
+        scenario = Scenario(
+            name="full",
+            action_sequence=[Action.CLEAN, Action.SYNC_SRC, Action.BUILD, Action.SIGN_APK],
+        )
+        screen.chain_container = MagicMock()
+        screen._active_profile = MagicMock()
+
+        screen._build_action_chain(scenario)
+
+        actions = [card.action for card in screen._action_cards]
+        assert actions == [Action.CLEAN, Action.SYNC_SRC, Action.BUILD, Action.SIGN_APK]
+
+
 class TestShowHelp:
     def test_shows_help_popup(self, screen):
         with patch("src.screens.actions_screen.show_help_popup") as mock_help:

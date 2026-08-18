@@ -104,6 +104,37 @@ class TestProfileStore:
         assert entry["delete_exclusions"] == ["custom_cache"]
         assert entry["patches"] == ["fix"]
 
+    def test_cert_fields_saved_and_loaded(self, temp_data_dir):
+        p = Profile(name="cert", cert_path="/certs/release.keystore", cert_password="sup3r-secret!")
+        storage_service.ProfileStore.save_all([p])
+
+        loaded = storage_service.ProfileStore.load_all()
+        assert len(loaded) == 1
+        assert loaded[0].cert_path == "/certs/release.keystore"
+        assert loaded[0].cert_password == "sup3r-secret!"
+
+    def test_cert_password_base64_encoded_at_rest(self, temp_data_dir):
+        p = Profile(name="cert", cert_password="p@ssw0rd")
+        storage_service.ProfileStore.save_all([p])
+
+        raw = json.loads((temp_data_dir / "profiles.json").read_text(encoding="utf-8"))
+        stored = raw[0]["cert_password"]
+        assert "p@ssw0rd" not in stored
+
+        import base64
+        assert base64.b64decode(stored.encode("ascii")).decode("utf-8") == "p@ssw0rd"
+
+    def test_cert_password_plaintext_migration(self, temp_data_dir):
+        data_file = temp_data_dir / "profiles.json"
+        data_file.write_text(json.dumps([
+            {"name": "legacy", "cert_password": "plaintext-pass", "cert_path": "/c"}
+        ]), encoding="utf-8")
+
+        loaded = storage_service.ProfileStore.load_all()
+        assert len(loaded) == 1
+        assert loaded[0].cert_password == "plaintext-pass"
+        assert loaded[0].cert_path == "/c"
+
 
 class TestSettingsStore:
     def test_load_default(self, temp_data_dir):

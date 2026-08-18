@@ -11,6 +11,9 @@
     excluded_files_input: excluded_files_input
     patches_container: patches_container
     delete_exclusions_input: delete_exclusions_input
+    cert_path_input: cert_path_input
+    cert_password_input: cert_password_input
+    signing_check_label: signing_check_label
     BoxLayout:
         orientation: 'vertical'
         padding: '10dp'
@@ -184,6 +187,81 @@
                     size_hint_y: None
                     height: '32dp'
                     multiline: False
+                BoxLayout:
+                    size_hint_y: None
+                    height: '32dp'
+                    canvas.before:
+                        Color:
+                            rgba: 0.15, 0.5, 0.35, 0.15
+                        Rectangle:
+                            size: self.size
+                            pos: self.pos
+                    Label:
+                        text: 'Android App Signing'
+                        bold: True
+                        halign: 'left'
+                        valign: 'middle'
+                        text_size: self.size
+                        padding: [dp(10), dp(0)]
+                BoxLayout:
+                    size_hint_y: None
+                    height: '32dp'
+                    canvas.before:
+                        Color:
+                            rgba: 0.15, 0.5, 0.35, 0.15
+                        Rectangle:
+                            size: self.size
+                            pos: self.pos
+                Label:
+                    text: 'Path to certificate'
+                    size_hint_y: None
+                    height: '32dp'
+                BoxLayout:
+                    spacing: '4dp'
+                    size_hint_y: None
+                    height: '32dp'
+                    TextInput:
+                        id: cert_path_input
+                        multiline: False
+                    Button:
+                        text: 'Browse'
+                        size_hint_x: None
+                        width: '80dp'
+                        on_release: root._browse_cert_path()
+                Label:
+                    text: 'Password for certificate'
+                    size_hint_y: None
+                    height: '32dp'
+                BoxLayout:
+                    spacing: '4dp'
+                    size_hint_y: None
+                    height: '32dp'
+                    TextInput:
+                        id: cert_password_input
+                        multiline: False
+                        password: True
+                BoxLayout:
+                    size_hint_y: None
+                    height: '32dp'
+                BoxLayout:
+                    spacing: '4dp'
+                    size_hint_y: None
+                    height: '32dp'
+                    Button:
+                        text: 'Check jarsigner and zipalign'
+                        size_hint_x: None
+                        width: '198dp'
+                        on_release: root._check_signing_tools()
+                    Label:
+                        id: signing_check_label
+                        text: ''
+                        font_size: '11sp'
+                        color: (0.3, 0.9, 0.4, 1)
+                        size_hint_x: None
+                        width: '160dp'
+                        halign: 'left'
+                        valign: 'middle'
+                        text_size: self.size
         BoxLayout:
             size_hint_y: None
             height: '48dp'

@@ -27,6 +27,9 @@ class ProfileEditorScreen(Screen):
     excluded_files_input = ObjectProperty(None)
     patches_container = ObjectProperty(None)
     delete_exclusions_input = ObjectProperty(None)
+    cert_path_input = ObjectProperty(None)
+    cert_password_input = ObjectProperty(None)
+    signing_check_label = ObjectProperty(None)
     save_btn = ObjectProperty(None)
 
     def __init__(self, **kwargs):
@@ -117,6 +120,10 @@ class ProfileEditorScreen(Screen):
         self.wsl_distro_input.text = profile.wsl_distro
         self.excluded_files_input.text = ", ".join(profile.excluded_files)
         self.delete_exclusions_input.text = ", ".join(profile.delete_exclusions)
+        self.cert_path_input.text = profile.cert_path
+        self.cert_password_input.text = profile.cert_password
+        if self.signing_check_label:
+            self.signing_check_label.text = ""
         self._build_patch_selector()
         self._cursor_end(self.sourcedir_input)
         self._cursor_end(self.spec_path_input)
@@ -132,6 +139,12 @@ class ProfileEditorScreen(Screen):
         self.wsl_distro_input.text = "Ubuntu-22.04"
         self.excluded_files_input.text = ""
         self.delete_exclusions_input.text = ""
+        if self.cert_path_input:
+            self.cert_path_input.text = ""
+        if self.cert_password_input:
+            self.cert_password_input.text = ""
+        if self.signing_check_label:
+            self.signing_check_label.text = ""
         self._build_patch_selector()
 
     def _build_profile(self, name: str) -> Profile:
@@ -148,6 +161,8 @@ class ProfileEditorScreen(Screen):
             excluded_files=[x.strip() for x in self.excluded_files_input.text.split(",") if x.strip()],
             patches=selected_patches,
             delete_exclusions=[x.strip() for x in self.delete_exclusions_input.text.split(",") if x.strip()],
+            cert_path=self.cert_path_input.text.strip() if self.cert_path_input else "",
+            cert_password=self.cert_password_input.text if self.cert_password_input else "",
         )
 
     def _cursor_end(self, widget):
@@ -319,6 +334,66 @@ class ProfileEditorScreen(Screen):
             initial_path=initial_path, on_choose=on_choose_dir
         )
 
+    def _browse_cert_path(self):
+        from pathlib import Path
+        from src.screens.file_chooser_helper import FileChooserHelper
+
+        current_cert = self.cert_path_input.text.strip()
+        if current_cert:
+            try:
+                p = Path(current_cert)
+                start_dir = str(p.parent) if not p.is_dir() else str(p)
+            except Exception:
+                start_dir = "."
+        else:
+            sourcedir = self.sourcedir_input.text.strip()
+            start_dir = sourcedir if sourcedir and Path(sourcedir).is_dir() else "."
+
+        def on_choose_file(chosen_path):
+            self.cert_path_input.text = chosen_path
+            self._cursor_end(self.cert_path_input)
+
+        cert_path = self.cert_path_input.text.strip()
+        selected = cert_path if cert_path else None
+
+        FileChooserHelper.show_file_chooser(
+            initial_path=start_dir,
+            target_filename="*",
+            on_choose=on_choose_file,
+            selected_path=selected,
+        )
+
+    def _check_signing_tools(self):
+        from src.services.wsl_service import WSLService
+        from src.models.profile import Profile
+
+        wsl_dir = self.wsl_dir_input.text.strip() if self.wsl_dir_input else ""
+        wsl_distro = self.wsl_distro_input.text.strip() if self.wsl_distro_input else ""
+
+        if not wsl_dir or not wsl_distro:
+            missing = [f for f, v in [("wsl_dir", wsl_dir), ("wsl_distro", wsl_distro)] if not v]
+            show_error_dialog("Signing Tools Check", f"Cannot check signing tools: missing {', '.join(missing)}")
+            return
+
+        profile = Profile(name="check", wsl_dir=wsl_dir, wsl_distro=wsl_distro)
+        ok, detail = WSLService().check_signing_tools(profile)
+
+        if ok:
+            if self.signing_check_label:
+                self.signing_check_label.text = "jarsigner & zipalign OK"
+                self.signing_check_label.color = (0.3, 0.9, 0.4, 1)
+        else:
+            if self.signing_check_label:
+                self.signing_check_label.text = "jarsigner/zipalign Not Found"
+                self.signing_check_label.color = (0.9, 0.3, 0.3, 1)
+            missing = detail or "<jarsigner>,<zipalign>"
+            message = (
+                f"{missing} Not Found\n"
+                f"{missing} should be installed in WSL and added to PATH.\n"
+                "This is required for Signing Android App Action only"
+            )
+            show_error_dialog("Signing Tools Check", message)
+
     def save(self):
         new_name = self.name_input.text.strip()
 
@@ -365,6 +440,8 @@ class ProfileEditorScreen(Screen):
             "- Excluded files: Files/directories to exclude (comma-separated).\n"
             "- Patches: Select patches to apply with this profile.\n"
             "- WSL settings: Configuration for Windows Subsystem for Linux.\n"
+            "- Path to certificate / Password: Used by the Signing Android App action for signing AABs.\n"
+            "- 'Check jarsigner and zipalign' verifies both tools are installed in WSL (required for signing only).\n"
             "- Click 'Save' to persist the profile, 'Cancel' to discard changes."
         )
 

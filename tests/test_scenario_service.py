@@ -76,6 +76,19 @@ class TestRunScenario:
         assert result.per_action_status["BUILD"] == ActionState.SUCCESS
         assert result.per_action_status["PULL_APK"] == ActionState.SUCCESS
 
+    def test_run_scenario_with_sign_apk(self):
+        svc = ScenarioService()
+        svc._runner = MagicMock()
+        svc._runner.run_action.return_value = ActionState.SUCCESS
+
+        scenario = _make_scenario(actions=[Action.BUILD, Action.SIGN_APK])
+        result = svc.run_scenario(scenario, None)
+
+        assert result.overall_status == ActionState.SUCCESS
+        assert result.per_action_status["BUILD"] == ActionState.SUCCESS
+        assert result.per_action_status["SIGN_APK"] == ActionState.SUCCESS
+        assert svc._runner.run_action.call_args_list[1][0][0] == Action.SIGN_APK
+
     def test_run_scenario_fails_on_action_failure(self):
         svc = ScenarioService()
         svc._runner = MagicMock()

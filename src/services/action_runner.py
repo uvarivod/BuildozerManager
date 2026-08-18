@@ -51,6 +51,7 @@ class ActionRunner:
             Action.PATCH: ["wsl_dir", "wsl_distro"],
             Action.PULL_APK: ["sourcedir", "wsl_dir", "wsl_distro"],
             Action.RUN: ["sourcedir", "spec_path", "wsl_dir", "wsl_distro", "adb_path"],
+            Action.SIGN_APK: ["cert_path", "cert_password", "wsl_dir", "wsl_distro"],
         }
         missing = []
         for field in required.get(action, []):
@@ -85,6 +86,8 @@ class ActionRunner:
             return self._run_pull_apk(profile, log_cb)
         elif action == Action.RUN:
             return self._run_launch(profile, log_cb)
+        elif action == Action.SIGN_APK:
+            return self._run_sign_apk(profile, log_cb)
         elif action == Action.CUSTOM_SCRIPT:
             return self._run_custom_script(script_path or "", log_cb)
         return ActionState.FAILED
@@ -277,3 +280,16 @@ class ActionRunner:
         launch_ok = self._adb.launch_app(profile.adb_path, package_name, log_callback=log_cb, device_serial=device_serial)
         log_cb("success" if launch_ok else "error", "Launch finished")
         return ActionState.SUCCESS if launch_ok else ActionState.FAILED
+
+    def _run_sign_apk(self, profile: Profile, log_cb) -> ActionState:
+        log_cb("info", "Starting Signing Android App...")
+        if not self._wsl.check_wsl_running(profile):
+            log_cb("error", "WSL is not running")
+            return ActionState.FAILED
+
+        ok = self._wsl.sign_apk(profile, log_cb, self._check_cancelled)
+        if self._check_cancelled():
+            log_cb("warn", "Signing cancelled")
+            return ActionState.CANCELLED
+        log_cb("success" if ok else "error", "Signing Android App finished")
+        return ActionState.SUCCESS if ok else ActionState.FAILED

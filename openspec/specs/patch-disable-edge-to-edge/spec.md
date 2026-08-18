@@ -31,6 +31,10 @@ The patch SHALL iterate all 3 AndroidManifest template paths, same as `patch_bac
 - **WHEN** `patch_activity_theme` runs
 - **THEN** it SHALL attempt to patch all 3 template file paths and log success/failure for each
 
+#### Scenario: buildozer.spec with UTF-8 content
+- **WHEN** `patch_activity_theme` runs and the `buildozer.spec` file contains UTF-8 encoded content (e.g., non-ASCII characters in comments or values)
+- **THEN** the patch SHALL read the spec file using UTF-8 encoding and still resolve the archs/package name and template paths without a decoding error
+
 ### Requirement: themes.xml is checked in build dist
 The patch SHALL check whether `themes.xml` (which defines `AppTheme.NoEdgeToEdge`) exists in the buildozer dist output before patching the manifest templates.
 The expected destination path SHALL be:

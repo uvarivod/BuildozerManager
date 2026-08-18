@@ -13,3 +13,5 @@ class Profile:
     wsl_distro: str = "Ubuntu-22.04"
     patches: list[str] = field(default_factory=list)
     delete_exclusions: list[str] = field(default_factory=list)
+    cert_path: str = ""
+    cert_password: str = ""

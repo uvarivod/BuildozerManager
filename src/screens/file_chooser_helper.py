@@ -27,10 +27,12 @@ class FileChooserHelper:
 
         def file_filter(folder, filename):
             full = _os.path.join(folder, filename)
+            if not target_filename or target_filename == "*":
+                return True
             return _os.path.isdir(full) or _os.path.basename(full).lower() == target_filename.lower()
 
         FileChooserHelper._show_chooser(
-            title=f"Select {target_filename}",
+            title=f"Select {target_filename or 'File'}",
             initial_path=initial_path,
             on_choose=on_choose,
             dirselect=False,
