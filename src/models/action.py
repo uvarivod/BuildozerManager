@@ -5,6 +5,7 @@ class Action(Enum):
     SYNC_SRC = auto()
     CLEAN = auto()
     BUILD = auto()
+    BUILD_AAB = auto()
     PATCH = auto()
     PULL_APK = auto()
     RUN = auto()
@@ -20,6 +21,7 @@ _ACTION_DESCRIPTIONS: dict[Action, str] = {
     Action.SYNC_SRC: "Sync source files to WSL",
     Action.CLEAN: "Clean WSL working directory",
     Action.BUILD: "Build APK with Buildozer",
+    Action.BUILD_AAB: "Build AAB with Buildozer (release)",
     Action.PATCH: "Apply patches to .buildozer",
     Action.PULL_APK: "Download APK from WSL",
     Action.RUN: "Install and run APK on device",
