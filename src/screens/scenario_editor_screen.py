@@ -19,6 +19,20 @@ from src.services.scenario_service import ScenarioService
 from src.screens.dialog_helper import show_confirm_dialog, show_error_dialog, show_help_popup
 
 
+_ACRONYM_TOKENS = {"AAB", "APK", "SRC"}
+
+
+def _action_label(action: Action) -> str:
+    parts = action.name.split("_")
+    labeled = []
+    for part in parts:
+        if part in _ACRONYM_TOKENS:
+            labeled.append(part)
+        else:
+            labeled.append(part.capitalize())
+    return "_".join(labeled)
+
+
 def _make_popup_label(text, **kw):
     lbl = Label(text=text, size_hint_y=None, halign="center", valign="middle", **kw)
     lbl.bind(width=lambda inst, w: setattr(inst, 'text_size', (w, None)))
@@ -33,7 +47,7 @@ class ActionChip(Button):
         if isinstance(action, CustomAction):
             self.text = action.name
         else:
-            self.text = action.name.title()
+            self.text = _action_label(action)
         self.size_hint_y = None
         self.height = '36dp'
         self.font_size = "12sp"
@@ -809,10 +823,10 @@ class ScenarioEditorScreen(Screen):
                 seq_layout.add_widget(arrow)
 
             if action == Action.CUSTOM_SCRIPT and self._current_scenario:
-                display_name = self._current_scenario.custom_action_names.get(idx, action.name.title())
+                display_name = self._current_scenario.custom_action_names.get(idx, _action_label(action))
                 ca_exists = self._custom_action_exists(display_name)
             else:
-                display_name = action.name.title()
+                display_name = _action_label(action)
                 ca_exists = True
             card = BoxLayout(orientation="vertical", size_hint=(None, None), size=(dp(100), card_height), spacing='2dp')
             action_btn = Button(

@@ -50,6 +50,23 @@ class TestValidateAction:
         missing = ActionRunner.validate_action(Action.BUILD, p)
         assert missing == []
 
+    def test_build_aab_requires_sourcedir_and_wsl(self):
+        p = Profile(name="test", wsl_distro="")
+        missing = ActionRunner.validate_action(Action.BUILD_AAB, p)
+        assert "sourcedir" in missing
+        assert "wsl_dir" in missing
+        assert "wsl_distro" in missing
+
+    def test_build_aab_valid(self):
+        p = Profile(
+            name="test",
+            sourcedir="/src",
+            wsl_dir="/wsl",
+            wsl_distro="Ubuntu",
+        )
+        missing = ActionRunner.validate_action(Action.BUILD_AAB, p)
+        assert missing == []
+
     def test_patch_requires_wsl(self):
         p = Profile(name="test", wsl_dir="", wsl_distro="")
         missing = ActionRunner.validate_action(Action.PATCH, p)
@@ -304,4 +321,65 @@ class TestRunAction:
             wsl_distro="Ubuntu",
         )
         state = runner.run_action(Action.SIGN_APK, profile)
+        assert state == ActionState.CANCELLED
+
+    def test_build_aab_stops_when_wsl_not_running(self):
+        runner = ActionRunner()
+        runner._wsl.check_wsl_running = MagicMock(return_value=False)
+        profile = Profile(
+            name="test",
+            sourcedir="/src",
+            wsl_dir="/wsl",
+            wsl_distro="Ubuntu",
+        )
+        state = runner.run_action(Action.BUILD_AAB, profile)
+        assert state == ActionState.FAILED
+
+    def test_build_aab_success_runs_release_command(self):
+        runner = ActionRunner()
+        runner._wsl.check_wsl_running = MagicMock(return_value=True)
+        runner._wsl.find_spec_in_wsl = MagicMock(return_value=True)
+        runner._wsl.exec_buildozer = MagicMock(return_value=True)
+        profile = Profile(
+            name="test",
+            sourcedir="/src",
+            wsl_dir="/wsl",
+            wsl_distro="Ubuntu",
+        )
+        state = runner.run_action(Action.BUILD_AAB, profile)
+        runner._wsl.exec_buildozer.assert_called_once()
+        _, kwargs = runner._wsl.exec_buildozer.call_args
+        assert kwargs["command"] == "buildozer android release"
+        assert state == ActionState.SUCCESS
+
+    def test_build_aab_failure(self):
+        runner = ActionRunner()
+        runner._wsl.check_wsl_running = MagicMock(return_value=True)
+        runner._wsl.find_spec_in_wsl = MagicMock(return_value=True)
+        runner._wsl.exec_buildozer = MagicMock(return_value=False)
+        profile = Profile(
+            name="test",
+            sourcedir="/src",
+            wsl_dir="/wsl",
+            wsl_distro="Ubuntu",
+        )
+        state = runner.run_action(Action.BUILD_AAB, profile)
+        assert state == ActionState.FAILED
+
+    def test_build_aab_cancelled(self):
+        runner = ActionRunner()
+        runner._wsl.check_wsl_running = MagicMock(return_value=True)
+
+        def exec_buildozer(profile, command, log_callback, cancel_check):
+            runner.cancel()
+            return True
+
+        runner._wsl.exec_buildozer = MagicMock(side_effect=exec_buildozer)
+        profile = Profile(
+            name="test",
+            sourcedir="/src",
+            wsl_dir="/wsl",
+            wsl_distro="Ubuntu",
+        )
+        state = runner.run_action(Action.BUILD_AAB, profile)
         assert state == ActionState.CANCELLED

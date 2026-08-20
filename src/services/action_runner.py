@@ -48,6 +48,7 @@ class ActionRunner:
             Action.SYNC_SRC: ["sourcedir", "wsl_dir", "wsl_distro"],
             Action.CLEAN: ["wsl_dir", "wsl_distro"],
             Action.BUILD: ["sourcedir", "wsl_dir", "wsl_distro"],
+            Action.BUILD_AAB: ["sourcedir", "wsl_dir", "wsl_distro"],
             Action.PATCH: ["wsl_dir", "wsl_distro"],
             Action.PULL_APK: ["sourcedir", "wsl_dir", "wsl_distro"],
             Action.RUN: ["sourcedir", "spec_path", "wsl_dir", "wsl_distro", "adb_path"],
@@ -80,6 +81,8 @@ class ActionRunner:
             return self._run_clean(profile, log_cb)
         elif action == Action.BUILD:
             return self._run_build(profile, log_cb)
+        elif action == Action.BUILD_AAB:
+            return self._run_build_aab(profile, log_cb)
         elif action == Action.PATCH:
             return self._run_patch(profile, log_cb)
         elif action == Action.PULL_APK:
@@ -128,6 +131,27 @@ class ActionRunner:
         if self._check_cancelled():
             return ActionState.CANCELLED
         log_cb("success" if build_ok else "error", "Build finished")
+        return ActionState.SUCCESS if build_ok else ActionState.FAILED
+
+    def _run_build_aab(self, profile: Profile, log_cb) -> ActionState:
+        log_cb("info", "Starting Build AAB...")
+        if not self._wsl.check_wsl_running(profile):
+            log_cb("error", "WSL is not running")
+            return ActionState.FAILED
+
+        if not self._wsl.find_spec_in_wsl(profile):
+            log_cb("warn", "buildozer.spec not found in WSL build directory")
+
+        log_cb("info", "Running buildozer (release)...")
+        build_ok = self._wsl.exec_buildozer(
+            profile,
+            command="buildozer android release",
+            log_callback=log_cb,
+            cancel_check=self._check_cancelled,
+        )
+        if self._check_cancelled():
+            return ActionState.CANCELLED
+        log_cb("success" if build_ok else "error", "Build AAB finished")
         return ActionState.SUCCESS if build_ok else ActionState.FAILED
 
     def _run_patch(self, profile: Profile, log_cb) -> ActionState:

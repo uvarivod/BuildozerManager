@@ -127,6 +127,21 @@ class TestActionChain:
         assert isinstance(screen._action_cards[0], ActionCard)
         assert screen._action_cards[0].action == Action.SIGN_APK
 
+    def test_builds_card_for_build_aab(self, screen):
+        from src.models.action import Action
+        from src.models.scenario import Scenario
+        from src.screens.action_card import ActionCard
+
+        scenario = Scenario(name="build-aab", action_sequence=[Action.BUILD_AAB])
+        screen.chain_container = MagicMock()
+        screen._active_profile = MagicMock()
+
+        screen._build_action_chain(scenario)
+
+        assert len(screen._action_cards) == 1
+        assert isinstance(screen._action_cards[0], ActionCard)
+        assert screen._action_cards[0].action == Action.BUILD_AAB
+
     def test_builds_card_in_full_chain(self, screen):
         from src.models.action import Action
         from src.models.scenario import Scenario
