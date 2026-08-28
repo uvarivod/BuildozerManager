@@ -83,7 +83,7 @@ class APKService:
                     return match.group(1)
         return ""
 
-    def find_latest_apk(self, profile: Profile) -> Path | None:
+    def _find_latest_by_ext(self, profile: Profile, ext: str) -> Path | None:
         wsl_root = self._wsl_path(profile)
         bin_path = wsl_root / "bin"
 
@@ -97,7 +97,7 @@ class APKService:
         version = self.get_version(profile)
 
         candidates = sorted(
-            [p for p in bin_path.rglob("*.apk")],
+            [p for p in bin_path.rglob(f"*.{ext}")],
             key=lambda p: p.stat().st_mtime,
             reverse=True,
         )
@@ -114,3 +114,9 @@ class APKService:
             return matching[0]
 
         return None
+
+    def find_latest_apk(self, profile: Profile) -> Path | None:
+        return self._find_latest_by_ext(profile, "apk")
+
+    def find_latest_aab(self, profile: Profile) -> Path | None:
+        return self._find_latest_by_ext(profile, "aab")

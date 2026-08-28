@@ -90,6 +90,23 @@ class TestValidateAction:
         missing = ActionRunner.validate_action(Action.PULL_APK, p)
         assert missing == []
 
+    def test_pull_aab_requires_sourcedir_and_wsl(self):
+        p = Profile(name="test", wsl_distro="")
+        missing = ActionRunner.validate_action(Action.PULL_AAB, p)
+        assert "sourcedir" in missing
+        assert "wsl_dir" in missing
+        assert "wsl_distro" in missing
+
+    def test_pull_aab_valid(self):
+        p = Profile(
+            name="test",
+            sourcedir="/src",
+            wsl_dir="/wsl",
+            wsl_distro="Ubuntu",
+        )
+        missing = ActionRunner.validate_action(Action.PULL_AAB, p)
+        assert missing == []
+
     def test_run_requires_adb_path(self):
         p = Profile(
             name="test",
@@ -383,3 +400,68 @@ class TestRunAction:
         )
         state = runner.run_action(Action.BUILD_AAB, profile)
         assert state == ActionState.CANCELLED
+
+    def test_pull_aab_stops_when_no_spec(self):
+        runner = ActionRunner()
+        profile = Profile(
+            name="test",
+            sourcedir="/nonexistent",
+            wsl_dir="/wsl",
+            wsl_distro="Ubuntu",
+        )
+        state = runner.run_action(Action.PULL_AAB, profile)
+        assert state == ActionState.FAILED
+
+    def test_pull_aab_stops_when_no_aab_found(self, tmp_path):
+        runner = ActionRunner()
+        runner._apk.find_latest_aab = MagicMock(return_value=None)
+        spec = tmp_path / "buildozer.spec"
+        spec.write_text("package.name = myapp\npackage.domain = com.example\n")
+        profile = Profile(
+            name="test",
+            sourcedir=str(tmp_path),
+            wsl_dir="/wsl",
+            wsl_distro="Ubuntu",
+        )
+        state = runner.run_action(Action.PULL_AAB, profile)
+        assert state == ActionState.FAILED
+        runner._apk.find_latest_aab.assert_called_once()
+
+    def test_pull_aab_success(self, tmp_path):
+        runner = ActionRunner()
+        wsl_fake = tmp_path / "wsl_aab"
+        wsl_fake.mkdir()
+        aab_file = wsl_fake / "myapp-1.0-release.aab"
+        aab_file.write_text("fake aab")
+        runner._apk.find_latest_aab = MagicMock(return_value=aab_file)
+        spec = tmp_path / "buildozer.spec"
+        spec.write_text("package.name = myapp\npackage.domain = com.example\n")
+        profile = Profile(
+            name="test",
+            sourcedir=str(tmp_path),
+            wsl_dir="/wsl",
+            wsl_distro="Ubuntu",
+        )
+        state = runner.run_action(Action.PULL_AAB, profile)
+        assert state == ActionState.SUCCESS
+        assert (tmp_path / "bin" / "myapp-1.0-release.aab").is_file()
+
+    def test_pull_aab_handles_copy_exception(self, tmp_path, monkeypatch):
+        runner = ActionRunner()
+        wsl_fake = tmp_path / "wsl_aab2"
+        wsl_fake.mkdir()
+        aab_file = wsl_fake / "myapp-1.0-release.aab"
+        aab_file.write_text("fake aab")
+        runner._apk.find_latest_aab = MagicMock(return_value=aab_file)
+        spec = tmp_path / "buildozer.spec"
+        spec.write_text("package.name = myapp\npackage.domain = com.example\n")
+        profile = Profile(
+            name="test",
+            sourcedir=str(tmp_path),
+            wsl_dir="/wsl",
+            wsl_distro="Ubuntu",
+        )
+        import shutil
+        monkeypatch.setattr(shutil, "copy2", MagicMock(side_effect=OSError("copy failed")))
+        state = runner.run_action(Action.PULL_AAB, profile)
+        assert state == ActionState.FAILED
