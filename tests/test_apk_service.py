@@ -158,6 +158,103 @@ def test_find_latest_apk_ignores_non_matching_apks(service, tmp_path, monkeypatc
     assert service.find_latest_apk(profile) is None
 
 
+def test_find_latest_aab_returns_matching_with_version(service, tmp_path, monkeypatch):
+    wsl_dir = tmp_path / "wsl_home"
+    wsl_dir.mkdir(parents=True)
+    spec_file = tmp_path / "buildozer.spec"
+    spec_file.write_text(
+        "package.domain = com.example\n"
+        "package.name = myapp\n"
+        "version = 1.1.0\n"
+    )
+    bin_dir = wsl_dir / "bin"
+    bin_dir.mkdir(parents=True)
+    aab_file = bin_dir / "myapp-1.1.0-arm64-release.aab"
+    aab_file.write_text("fake aab")
+    profile = Profile(
+        name="test",
+        sourcedir=str(tmp_path),
+        wsl_dir=str(wsl_dir.as_posix()),
+        wsl_distro="Ubuntu",
+    )
+    monkeypatch.setattr(service, "_wsl_path", lambda p: wsl_dir)
+    result = service.find_latest_aab(profile)
+    assert result is not None
+    assert result.name == "myapp-1.1.0-arm64-release.aab"
+
+
+def test_find_latest_aab_fallback_to_prefix(service, tmp_path, monkeypatch):
+    wsl_dir = tmp_path / "wsl_home"
+    wsl_dir.mkdir(parents=True)
+    spec_file = tmp_path / "buildozer.spec"
+    spec_file.write_text(
+        "package.domain = com.example\n"
+        "package.name = myapp\n"
+        "version = 1.1.0\n"
+    )
+    bin_dir = wsl_dir / "bin"
+    bin_dir.mkdir(parents=True)
+    aab_file = bin_dir / "myapp-0.9-arm64-release.aab"
+    aab_file.write_text("fake aab fallback")
+    profile = Profile(
+        name="test",
+        sourcedir=str(tmp_path),
+        wsl_dir=str(wsl_dir.as_posix()),
+        wsl_distro="Ubuntu",
+    )
+    monkeypatch.setattr(service, "_wsl_path", lambda p: wsl_dir)
+    result = service.find_latest_aab(profile)
+    assert result is not None
+    assert result.name == "myapp-0.9-arm64-release.aab"
+
+
+def test_find_latest_aab_no_match(service, tmp_path, monkeypatch):
+    wsl_dir = tmp_path / "wsl_home"
+    wsl_dir.mkdir(parents=True)
+    spec_file = tmp_path / "buildozer.spec"
+    spec_file.write_text(
+        "package.domain = com.example\n"
+        "package.name = myapp\n"
+    )
+    bin_dir = wsl_dir / "bin"
+    bin_dir.mkdir(parents=True)
+    other = bin_dir / "other-app-1.0-release.aab"
+    other.write_text("other")
+    profile = Profile(
+        name="test",
+        sourcedir=str(tmp_path),
+        wsl_dir=str(wsl_dir.as_posix()),
+        wsl_distro="Ubuntu",
+    )
+    monkeypatch.setattr(service, "_wsl_path", lambda p: wsl_dir)
+    assert service.find_latest_aab(profile) is None
+
+
+def test_find_latest_aab_case_insensitive(service, tmp_path, monkeypatch):
+    wsl_dir = tmp_path / "wsl_home"
+    wsl_dir.mkdir(parents=True)
+    spec_file = tmp_path / "buildozer.spec"
+    spec_file.write_text(
+        "package.domain = com.example\n"
+        "package.name = MyApp\n"
+        "version = 1.0\n"
+    )
+    bin_dir = wsl_dir / "bin"
+    bin_dir.mkdir(parents=True)
+    aab_file = bin_dir / "myapp-1.0-arm64-release.aab"
+    aab_file.write_text("case insensitive")
+    profile = Profile(
+        name="test",
+        sourcedir=str(tmp_path),
+        wsl_dir=str(wsl_dir.as_posix()),
+        wsl_distro="Ubuntu",
+    )
+    monkeypatch.setattr(service, "_wsl_path", lambda p: wsl_dir)
+    result = service.find_latest_aab(profile)
+    assert result is not None
+    assert result.name == "myapp-1.0-arm64-release.aab"
+
+
 def test_get_version_returns_empty_when_no_spec(service, tmp_path):
     profile = Profile(
         name="test",

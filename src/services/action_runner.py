@@ -51,6 +51,7 @@ class ActionRunner:
             Action.BUILD_AAB: ["sourcedir", "wsl_dir", "wsl_distro"],
             Action.PATCH: ["wsl_dir", "wsl_distro"],
             Action.PULL_APK: ["sourcedir", "wsl_dir", "wsl_distro"],
+            Action.PULL_AAB: ["sourcedir", "wsl_dir", "wsl_distro"],
             Action.RUN: ["sourcedir", "spec_path", "wsl_dir", "wsl_distro", "adb_path"],
             Action.SIGN_APK: ["cert_path", "cert_password", "wsl_dir", "wsl_distro"],
         }
@@ -87,6 +88,8 @@ class ActionRunner:
             return self._run_patch(profile, log_cb)
         elif action == Action.PULL_APK:
             return self._run_pull_apk(profile, log_cb)
+        elif action == Action.PULL_AAB:
+            return self._run_pull_aab(profile, log_cb)
         elif action == Action.RUN:
             return self._run_launch(profile, log_cb)
         elif action == Action.SIGN_APK:
@@ -226,6 +229,39 @@ class ActionRunner:
         bin_dir = Path(f"\\\\wsl$\\{profile.wsl_distro}") / profile.wsl_dir.lstrip("/") / "bin"
         log_cb("info", f"Searching for file under {bin_dir}")
         latest = self._apk.find_latest_apk(profile)
+        if not latest:
+            log_cb("info", "Missed")
+            if bin_dir.is_dir():
+                files = [p.name for p in sorted(bin_dir.iterdir())]
+                if files:
+                    log_cb("info", "Files in folder: " + ", ".join(files))
+            return ActionState.FAILED
+
+        log_cb("info", f"{latest.name} .. FOUND")
+
+        import shutil
+        dest = Path(profile.sourcedir) / "bin"
+        dest_path = dest / latest.name
+        replaced = dest_path.exists()
+        try:
+            dest.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(latest, dest_path)
+            msg = "Replaced with new" if replaced else "SUCCESS"
+            log_cb("success", f"Copying to {dest_path} .. {msg}")
+            return ActionState.SUCCESS
+        except Exception as e:
+            log_cb("error", f"Copying to {dest_path} .. FAILED ({e})")
+            return ActionState.FAILED
+
+    def _run_pull_aab(self, profile: Profile, log_cb) -> ActionState:
+        spec_path = Path(profile.sourcedir) / "buildozer.spec"
+        if not spec_path.is_file():
+            log_cb("error", f"buildozer.spec not found at {spec_path}")
+            return ActionState.FAILED
+
+        bin_dir = Path(f"\\\\wsl$\\{profile.wsl_distro}") / profile.wsl_dir.lstrip("/") / "bin"
+        log_cb("info", f"Searching for file under {bin_dir}")
+        latest = self._apk.find_latest_aab(profile)
         if not latest:
             log_cb("info", "Missed")
             if bin_dir.is_dir():
