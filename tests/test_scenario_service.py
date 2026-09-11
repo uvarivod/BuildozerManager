@@ -19,9 +19,23 @@ class TestGetPredefinedScenarios:
     def test_returns_two_scenarios(self):
         svc = ScenarioService()
         scenarios = svc.get_predefined_scenarios()
-        assert len(scenarios) == 2
+        assert len(scenarios) == 3
         assert scenarios[0].name == "Full Clean build"
         assert scenarios[1].name == "Rebuild"
+        assert scenarios[2].name == "Build and Sign AAB"
+
+    def test_build_and_sign_aab_has_correct_actions(self):
+        svc = ScenarioService()
+        scenario = svc.get_predefined_scenarios()[2]
+        assert scenario.name == "Build and Sign AAB"
+        assert scenario.description == "Build AAB, signs and copy to src/bin file which you can send to Google Play."
+        assert scenario.action_sequence == [
+            Action.BUILD_AAB,
+            Action.SIGN_APK,
+            Action.PULL_AAB,
+        ]
+        assert scenario.stop_on_failure is True
+        assert scenario.is_predefined is True
 
     def test_full_clean_build_has_correct_actions(self):
         svc = ScenarioService()

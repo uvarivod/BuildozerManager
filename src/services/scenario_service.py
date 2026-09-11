@@ -43,6 +43,17 @@ class ScenarioService:
                 stop_on_failure=True,
                 is_predefined=True,
             ),
+            Scenario(
+                name="Build and Sign AAB",
+                description="Build AAB, signs and copy to src/bin file which you can send to Google Play.",
+                action_sequence=[
+                    Action.BUILD_AAB,
+                    Action.SIGN_APK,
+                    Action.PULL_AAB,
+                ],
+                stop_on_failure=True,
+                is_predefined=True,
+            ),
         ]
 
     def run_scenario(
