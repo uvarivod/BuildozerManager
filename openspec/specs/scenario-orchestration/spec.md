@@ -7,7 +7,7 @@ Execute sequences of actions (scenarios) with predefined and user-customizable c
 ## Requirements
 
 ### Requirement: System provides precisely two predefined scenarios
-The system SHALL include exactly two built-in scenarios: "Full Clean build" and "Rebuild". The previous four-scenario set (Build, Clean Build, Clean Build + Patch, Build and Run) SHALL be removed.
+The system SHALL include exactly three built-in scenarios: "Full Clean build", "Rebuild", and "Build and Sign AAB".
 
 #### Scenario: Full Clean build
 - **WHEN** the user selects "Full Clean build"
@@ -25,6 +25,12 @@ The system SHALL include exactly two built-in scenarios: "Full Clean build" and 
 - **THEN** the system runs BUILD (buildozer build)
 - **THEN** the system runs PULL_APK (copy APK from WSL to local sourcedir/bin)
 - **THEN** the system runs RUN (install APK via ADB and launch on device)
+
+#### Scenario: Build and Sign AAB
+- **WHEN** the user selects "Build and Sign AAB"
+- **THEN** the system runs BUILD_AAB (buildozer android release)
+- **THEN** the system runs SIGN_APK (sign and zipalign the AAB with the configured keystore)
+- **THEN** the system runs PULL_AAB (copy signed AAB from WSL bin to local sourcedir/bin)
 
 ### Requirement: Scenario runner accepts a skip mask
 The system SHALL accept an optional `skip_indices` parameter (a set of integer indices) in the `run_scenario` method. Actions matching these indices SHALL be skipped during execution — their state SHALL be recorded as "Skipped" and the runner SHALL proceed to the next action.
@@ -67,7 +73,7 @@ The system SHALL stop executing remaining actions if any action in the sequence 
 - **THEN** the Run action is recorded as "Skipped" (not affected by the failure cascade)
 
 ### Requirement: Predefined scenarios are not editable
-Predefined scenarios ("Full Clean build", "Rebuild") SHALL NOT be editable or deletable via the Scenario Editor. Their action sequences, names, and descriptions SHALL be fixed.
+Predefined scenarios ("Full Clean build", "Rebuild", "Build and Sign AAB") SHALL NOT be editable or deletable via the Scenario Editor. Their action sequences, names, and descriptions SHALL be fixed.
 
 #### Scenario: Opening predefined scenario shows read-only
 - **WHEN** the user selects a predefined scenario in the Scenario Editor
