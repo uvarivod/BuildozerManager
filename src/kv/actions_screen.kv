@@ -2,6 +2,7 @@
 #:import dp kivy.metrics.dp
 #:import LogPanel src.screens.log_panel.LogPanel
 #:import ActionCard src.screens.action_card.ActionCard
+#:import ScenarioSpinnerOption src.screens.actions_screen.ScenarioSpinnerOption
 
 <ActionsScreen>:
     log_panel: log_panel
@@ -76,6 +77,7 @@
                 size_hint_x: 0.4
                 size_hint_y: None
                 height: '36dp'
+                option_cls: ScenarioSpinnerOption
                 on_text: root.on_scenario_selected(self.text)
             BoxLayout:
                 orientation: 'horizontal'

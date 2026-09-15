@@ -44,6 +44,33 @@ def _build_kivy_tree():
     kivy.uix.textinput.TextInput = MagicMock(name="TextInput")
     kivy.uix.spinner = _KivyModule()
     kivy.uix.spinner.Spinner = MagicMock(name="Spinner")
+
+    class _MockSpinnerOption:
+        def __init__(self, **kwargs):
+            for k, v in kwargs.items():
+                setattr(self, k, v)
+            self.text = kwargs.get("text", "")
+            self._hover_inside = False
+            self._hover_event = None
+
+        def bind(self, **kwargs):
+            pass
+
+        def unbind(self, **kwargs):
+            pass
+
+        def collide_point(self, *args):
+            return False
+
+        def to_widget(self, x, y):
+            return (x, y)
+
+        def get_parent_window(self):
+            return None
+
+    kivy.uix.spinner.SpinnerOption = _MockSpinnerOption
+    kivy.uix.dropdown = _KivyModule()
+    kivy.uix.dropdown.DropDown = MagicMock(name="DropDown")
     kivy.uix.popup = _KivyModule()
     kivy.uix.popup.Popup = MagicMock(name="Popup")
     kivy.uix.checkbox = _KivyModule()
@@ -72,9 +99,19 @@ def _build_kivy_tree():
     kivy.core = _KivyModule()
     kivy.core.window = _KivyModule()
     kivy.core.window.Window = MagicMock(name="Window")
+    kivy.core.window.Window.width = 800
+    kivy.core.window.Window.height = 600
+    kivy.core.window.Window.mouse_pos = (0, 0)
 
     kivy.clock = _KivyModule()
     kivy.clock.Clock = MagicMock(name="Clock")
+
+    kivy.graphics = _KivyModule()
+    kivy.graphics.Color = MagicMock(name="Color")
+    kivy.graphics.RoundedRectangle = MagicMock(name="RoundedRectangle")
+
+    kivy.uix.gridlayout = _KivyModule()
+    kivy.uix.gridlayout.GridLayout = MagicMock(name="GridLayout")
 
     kivy.config = _KivyModule()
     kivy.config.Config = MagicMock(name="Config")
@@ -97,11 +134,14 @@ def _install_kivy():
     sys.modules["kivy.uix.button"] = k.uix.button
     sys.modules["kivy.uix.textinput"] = k.uix.textinput
     sys.modules["kivy.uix.spinner"] = k.uix.spinner
+    sys.modules["kivy.uix.dropdown"] = k.uix.dropdown
     sys.modules["kivy.uix.popup"] = k.uix.popup
     sys.modules["kivy.uix.checkbox"] = k.uix.checkbox
     sys.modules["kivy.uix.scrollview"] = k.uix.scrollview
     sys.modules["kivy.uix.filechooser"] = k.uix.filechooser
     sys.modules["kivy.uix.togglebutton"] = k.uix.togglebutton
+    sys.modules["kivy.uix.gridlayout"] = k.uix.gridlayout
+    sys.modules["kivy.graphics"] = k.graphics
     sys.modules["kivy.lang"] = k.lang
     sys.modules["kivy.properties"] = k.properties
     sys.modules["kivy.metrics"] = k.metrics

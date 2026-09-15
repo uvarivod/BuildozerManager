@@ -3,6 +3,9 @@ from kivy.properties import BooleanProperty, ObjectProperty, StringProperty
 from kivy.uix.label import Label
 from kivy.clock import Clock
 from kivy.core.window import Window
+from kivy.metrics import dp
+from kivy.uix.spinner import SpinnerOption
+from kivy.graphics import Color, RoundedRectangle
 
 from src.models.action import Action, ActionState
 from src.models.profile import Profile
@@ -14,6 +17,134 @@ from src.services.log_service import LogService
 from src.services.storage_service import ProfileStore, ScenarioStore, SettingsStore, CustomActionStore
 from src.screens.dialog_helper import show_confirm_dialog, show_error_dialog, show_help_popup
 from src.services.log_cleanup_service import cleanup_logs
+
+_scenario_tooltip = None
+_scenario_tooltip_trigger = None
+
+
+def _get_scenario_tooltip():
+    global _scenario_tooltip
+    if _scenario_tooltip is None:
+        _scenario_tooltip = Label(
+            size_hint=(None, None),
+            color=(1, 1, 1, 1),
+            halign="left",
+            valign="middle",
+            padding=(dp(6), dp(4)),
+        )
+        _scenario_tooltip.bind(texture_size=lambda inst, val: setattr(inst, "size", (val[0] + dp(12), val[1] + dp(8))))
+        with _scenario_tooltip.canvas.before:
+            Color(0.15, 0.15, 0.15, 0.92)
+            _scenario_tooltip._bg_rect = RoundedRectangle(radius=[dp(4)])
+        _scenario_tooltip.bind(pos=lambda inst, val: setattr(inst._bg_rect, "pos", val))
+        _scenario_tooltip.bind(size=lambda inst, val: setattr(inst._bg_rect, "size", val))
+        _scenario_tooltip.text_size = (dp(320), None)
+    return _scenario_tooltip
+
+
+def _hide_scenario_tooltip(*_args):
+    global _scenario_tooltip
+    if _scenario_tooltip is not None and _scenario_tooltip.parent is not None:
+        try:
+            Window.remove_widget(_scenario_tooltip)
+        except Exception:
+            if _scenario_tooltip.parent:
+                _scenario_tooltip.parent.remove_widget(_scenario_tooltip)
+    global _scenario_tooltip_trigger
+    if _scenario_tooltip_trigger is not None:
+        try:
+            _scenario_tooltip_trigger.cancel()
+        except Exception:
+            pass
+        _scenario_tooltip_trigger = None
+
+
+def _show_scenario_tooltip(text, pos):
+    desc = (text or "").strip()
+    if not desc:
+        _hide_scenario_tooltip()
+        return
+    tip = _get_scenario_tooltip()
+    tip.text = desc
+    tip.texture_update()
+    # ensure size via texture
+    tip.size = (min(tip.texture_size[0] + dp(12), dp(320) + dp(12)), tip.texture_size[1] + dp(8))
+    x, y = pos[0] + dp(12), pos[1] - tip.height - dp(12)
+    x = max(dp(4), min(x, Window.width - tip.width - dp(4)))
+    y = max(dp(4), min(y, Window.height - tip.height - dp(4)))
+    tip.pos = (x, y)
+    if tip.parent is None:
+        Window.add_widget(tip)
+
+
+class ScenarioSpinnerOption(SpinnerOption):
+    desc_map: dict = {}
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self._hover_inside = False
+        self._hover_event = None
+        Window.bind(mouse_pos=self._on_mouse_pos)
+        self.bind(on_release=self._on_option_release)
+        self.bind(on_press=self._on_option_press)
+
+    def _cancel_hover(self):
+        if self._hover_event is not None:
+            try:
+                self._hover_event.cancel()
+            except Exception:
+                pass
+            self._hover_event = None
+
+    def _on_option_release(self, *args):
+        self._cancel_hover()
+        _hide_scenario_tooltip()
+
+    def _on_option_press(self, *args):
+        self._cancel_hover()
+        _hide_scenario_tooltip()
+
+    def _on_mouse_pos(self, _window, pos):
+        if not self.get_parent_window():
+            return
+        try:
+            inside = self.collide_point(*self.to_widget(*pos))
+        except Exception:
+            inside = False
+        if inside and not self._hover_inside:
+            self._hover_inside = True
+            if self._hover_event is not None:
+                try:
+                    self._hover_event.cancel()
+                except Exception:
+                    pass
+            self._hover_event = Clock.schedule_once(lambda dt: self._trigger_tooltip(pos), 0.4)
+        elif not inside and self._hover_inside:
+            self._hover_inside = False
+            if self._hover_event is not None:
+                try:
+                    self._hover_event.cancel()
+                except Exception:
+                    pass
+                self._hover_event = None
+            _hide_scenario_tooltip()
+
+    def _trigger_tooltip(self, pos):
+        self._hover_event = None
+        desc = ScenarioSpinnerOption.desc_map.get(self.text, "")
+        if not desc or not desc.strip():
+            _hide_scenario_tooltip()
+            return
+        _show_scenario_tooltip(desc, pos)
+
+    def on_parent(self, instance, parent):
+        if parent is None:
+            try:
+                Window.unbind(mouse_pos=self._on_mouse_pos)
+            except Exception:
+                pass
+            self._cancel_hover()
+            _hide_scenario_tooltip()
 
 
 class ActionsScreen(Screen):
@@ -109,6 +240,7 @@ class ActionsScreen(Screen):
         Window.bind(on_resize=self._on_window_resize)
 
     def on_leave(self, *args):
+        _hide_scenario_tooltip()
         Window.unbind(on_resize=self._on_window_resize)
 
     def on_enter(self, *args):
@@ -221,10 +353,22 @@ class ActionsScreen(Screen):
         predefined = self._scenario_service.get_predefined_scenarios()
         user = ScenarioStore.load_all()
         self._scenarios = predefined + user
+        ScenarioSpinnerOption.desc_map = {s.name: (s.description or "") for s in self._scenarios}
         if self.scenario_spinner:
+            self.scenario_spinner.option_cls = ScenarioSpinnerOption
             self.scenario_spinner.values = [s.name for s in self._scenarios]
+            try:
+                self.scenario_spinner.unbind(is_open=self._on_scenario_spinner_open)
+            except Exception:
+                pass
+            self.scenario_spinner.bind(is_open=self._on_scenario_spinner_open)
+
+    def _on_scenario_spinner_open(self, spinner, is_open):
+        if not is_open:
+            _hide_scenario_tooltip()
 
     def on_scenario_selected(self, text: str):
+        _hide_scenario_tooltip()
         if not text or text == "Select scenario":
             self._current_scenario = None
             self._clear_action_chain()
