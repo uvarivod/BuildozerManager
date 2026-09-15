@@ -198,3 +198,124 @@ class TestOpenScenarioEditor:
     def test_opens_scenario_builder(self, screen):
         screen.open_scenario_editor()
         assert screen.manager.current == "scenario_builder"
+
+
+class TestScenarioSpinnerOption:
+    def test_trigger_shows_tooltip_for_known_scenario(self):
+        from src.screens.actions_screen import ScenarioSpinnerOption
+
+        ScenarioSpinnerOption.desc_map = {"MyScenario": "Do something cool"}
+        opt = ScenarioSpinnerOption(text="MyScenario")
+        with patch("src.screens.actions_screen._show_scenario_tooltip") as mock_show:
+            opt._trigger_tooltip((100, 100))
+            mock_show.assert_called_once()
+            args, _ = mock_show.call_args
+            assert args[0] == "Do something cool"
+            assert args[1] == (100, 100)
+
+    def test_trigger_hides_for_empty_description(self):
+        from src.screens.actions_screen import ScenarioSpinnerOption
+
+        ScenarioSpinnerOption.desc_map = {"Empty": "   "}
+        opt = ScenarioSpinnerOption(text="Empty")
+        with patch("src.screens.actions_screen._show_scenario_tooltip") as mock_show:
+            with patch("src.screens.actions_screen._hide_scenario_tooltip") as mock_hide:
+                opt._trigger_tooltip((10, 10))
+                mock_show.assert_not_called()
+                mock_hide.assert_called_once()
+
+    def test_trigger_hides_for_missing_scenario(self):
+        from src.screens.actions_screen import ScenarioSpinnerOption
+
+        ScenarioSpinnerOption.desc_map = {}
+        opt = ScenarioSpinnerOption(text="Unknown")
+        with patch("src.screens.actions_screen._hide_scenario_tooltip") as mock_hide:
+            opt._trigger_tooltip((0, 0))
+            mock_hide.assert_called_once()
+
+    def test_hide_on_leave_cancels_hover(self):
+        from src.screens.actions_screen import ScenarioSpinnerOption
+        from unittest.mock import MagicMock
+
+        ScenarioSpinnerOption.desc_map = {"A": "desc"}
+        opt = ScenarioSpinnerOption(text="A")
+        # simulate hover started
+        opt._hover_inside = True
+        mock_event = MagicMock()
+        opt._hover_event = mock_event
+        opt.get_parent_window = MagicMock(return_value=MagicMock())
+        opt.to_widget = MagicMock(return_value=(0, 0))
+        opt.collide_point = MagicMock(return_value=False)
+        with patch("src.screens.actions_screen._hide_scenario_tooltip") as mock_hide:
+            opt._on_mouse_pos(MagicMock(), (0, 0))
+            mock_event.cancel.assert_called_once()
+            mock_hide.assert_called_once()
+            assert opt._hover_inside is False
+
+    def test_refresh_sets_desc_map_and_option_cls(self, screen):
+        from src.screens.actions_screen import ScenarioSpinnerOption
+        from src.models.scenario import Scenario
+        from src.models.action import Action
+
+        s1 = Scenario(name="Full Clean build", description="clean desc", action_sequence=[Action.CLEAN], is_predefined=True)
+        s2 = Scenario(name="Custom", description="custom desc", action_sequence=[Action.BUILD], is_predefined=False)
+        screen._scenarios = []
+        screen.scenario_spinner = MagicMock()
+        with patch("src.screens.actions_screen.ScenarioStore") as mock_store, \
+             patch("src.screens.actions_screen.ScenarioService") as mock_svc:
+            mock_svc.return_value.get_predefined_scenarios.return_value = [s1]
+            mock_store.load_all.return_value = [s2]
+            # replace service instance
+            screen._scenario_service = mock_svc.return_value
+            screen._refresh_scenarios()
+            assert ScenarioSpinnerOption.desc_map["Full Clean build"] == "clean desc"
+            assert ScenarioSpinnerOption.desc_map["Custom"] == "custom desc"
+            assert screen.scenario_spinner.option_cls == ScenarioSpinnerOption
+
+    def test_click_before_delay_cancels_hover_and_hides(self):
+        from src.screens.actions_screen import ScenarioSpinnerOption
+
+        ScenarioSpinnerOption.desc_map = {"A": "desc"}
+        opt = ScenarioSpinnerOption(text="A")
+        mock_event = MagicMock()
+        opt._hover_event = mock_event
+        with patch("src.screens.actions_screen._hide_scenario_tooltip") as mock_hide:
+            opt._on_option_press()
+            mock_event.cancel.assert_called_once()
+            mock_hide.assert_called_once()
+            assert opt._hover_event is None
+        # also on_release
+        mock_event2 = MagicMock()
+        opt._hover_event = mock_event2
+        with patch("src.screens.actions_screen._hide_scenario_tooltip") as mock_hide2:
+            opt._on_option_release()
+            mock_event2.cancel.assert_called_once()
+            mock_hide2.assert_called_once()
+
+    def test_dropdown_close_hides_tooltip(self, screen):
+        with patch("src.screens.actions_screen._hide_scenario_tooltip") as mock_hide:
+            screen._on_scenario_spinner_open(MagicMock(), False)
+            mock_hide.assert_called_once()
+        with patch("src.screens.actions_screen._hide_scenario_tooltip") as mock_hide2:
+            screen._on_scenario_spinner_open(MagicMock(), True)
+            mock_hide2.assert_not_called()
+
+    def test_selecting_before_tooltip_delay_does_not_leave_stuck_tooltip(self):
+        from src.screens.actions_screen import ScenarioSpinnerOption
+        from unittest.mock import MagicMock
+
+        ScenarioSpinnerOption.desc_map = {"Build and Sign AAB": "Build AAB, signs ..."}
+        opt = ScenarioSpinnerOption(text="Build and Sign AAB")
+        # hover schedules event
+        mock_event = MagicMock()
+        opt._hover_event = mock_event
+        opt._hover_inside = True
+        # user clicks before delay -> press cancels event and hides
+        with patch("src.screens.actions_screen._hide_scenario_tooltip") as mock_hide, \
+             patch("src.screens.actions_screen._show_scenario_tooltip") as mock_show:
+            opt._on_option_press()
+            mock_event.cancel.assert_called_once()
+            mock_hide.assert_called_once()
+            # even if the Clock event would have fired, it is cancelled so no show
+            assert opt._hover_event is None
+            mock_show.assert_not_called()
