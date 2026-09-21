@@ -233,7 +233,7 @@ class ActionsScreen(Screen):
 
     def _refresh_actions_layout(self):
         if self._current_scenario:
-            self._build_action_chain(self._current_scenario)
+            self._build_action_chain(self._current_scenario, preserve_state=True)
         self._refresh_profile_spinner()
 
     def on_pre_enter(self, *args):
@@ -257,7 +257,7 @@ class ActionsScreen(Screen):
                 if s.name == self._current_scenario.name:
                     self._current_scenario = s
                     break
-            self._build_action_chain(self._current_scenario)
+            self._build_action_chain(self._current_scenario, preserve_state=True)
 
     def _refresh_profile_spinner(self):
         profiles = ProfileStore.load_all()
@@ -286,7 +286,7 @@ class ActionsScreen(Screen):
                 self.profile_spinner.text = profile.name
             self._updating_spinner = False
             if self._current_scenario:
-                self._build_action_chain(self._current_scenario)
+                self._build_action_chain(self._current_scenario, preserve_state=True)
         else:
             self.status_label = "No profile selected"
         self._refresh_profile_btn()
@@ -372,6 +372,8 @@ class ActionsScreen(Screen):
         if not text or text == "Select scenario":
             self._current_scenario = None
             self._clear_action_chain()
+            if not self.is_running:
+                self.status_label = "Ready"
             return
         scenario = next((s for s in self._scenarios if s.name == text), None)
         if scenario:
@@ -384,15 +386,21 @@ class ActionsScreen(Screen):
                     show_error_dialog("Missing Actions", msg)
                     return
             self._current_scenario = scenario
-            self._build_action_chain(scenario)
+            self._build_action_chain(scenario, preserve_state=False)
+            if not self.is_running:
+                self.status_label = "Ready"
 
     def _clear_action_chain(self):
         if self.chain_container:
             self.chain_container.clear_widgets()
-
-    def _build_action_chain(self, scenario: Scenario | None = None):
-        saved_states = {}
+        # Clear stale card references so future preserve_state rebuilds
+        # (e.g., resize) don't snapshot/restore old results after placeholder
         if hasattr(self, "_action_cards"):
+            self._action_cards = []
+
+    def _build_action_chain(self, scenario: Scenario | None = None, preserve_state: bool = False):
+        saved_states = {}
+        if preserve_state and hasattr(self, "_action_cards"):
             for i, card in enumerate(self._action_cards):
                 saved_states[i] = {
                     "action_state": card.action_state,
@@ -443,7 +451,7 @@ class ActionsScreen(Screen):
             cards.append(card)
             self.chain_container.add_widget(card)
         self._action_cards = cards
-        if saved_states:
+        if preserve_state and saved_states:
             for i, card in enumerate(self._action_cards):
                 if i in saved_states:
                     s = saved_states[i]

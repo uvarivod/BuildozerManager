@@ -108,7 +108,12 @@ class TestOnScenarioSelected:
 
         mock_error.assert_not_called()
         assert screen._current_scenario is scenario
-        mock_build.assert_called_once_with(scenario)
+        mock_build.assert_called_once()
+        args, kwargs = mock_build.call_args
+        assert args[0] == scenario
+        # preserve_state=False explicitly for switch
+        preserve = kwargs.get("preserve_state", args[1] if len(args) > 1 else None)
+        assert preserve is False
 
 
 class TestActionChain:
@@ -319,3 +324,263 @@ class TestScenarioSpinnerOption:
             # even if the Clock event would have fired, it is cancelled so no show
             assert opt._hover_event is None
             mock_show.assert_not_called()
+
+
+class TestScenarioSwitchResetsResults:
+    """3.1 — switch resets per-action and aggregate results (ADDED Requirement)."""
+
+    def test_switch_resets_all_cards_to_pending_and_status_ready(self, screen):
+        from src.models.action import Action
+        from src.models.scenario import Scenario
+
+        scenario_a = Scenario(
+            name="Full Clean build",
+            action_sequence=[Action.CLEAN, Action.SYNC_SRC, Action.BUILD, Action.PATCH, Action.BUILD, Action.PULL_APK, Action.RUN],
+        )
+        scenario_b = Scenario(
+            name="Rebuild",
+            action_sequence=[Action.SYNC_SRC, Action.BUILD, Action.PULL_APK, Action.RUN],
+        )
+        screen.chain_container = MagicMock()
+        screen._active_profile = MagicMock()
+        screen._active_profile.patches = []
+        screen._scenarios = [scenario_a, scenario_b]
+        screen.is_running = False
+
+        # build first scenario and simulate run results
+        screen._build_action_chain(scenario_a, preserve_state=False)
+        # simulate stale results: mix of SUCCESS/FAILED/SKIPPED
+        screen._action_cards[0].action_state = "SUCCESS"
+        screen._action_cards[0].is_completed = True
+        screen._action_cards[1].action_state = "FAILED"
+        screen._action_cards[1].is_completed = True
+        screen._action_cards[2].is_skipped = True
+        screen._action_cards[2].action_state = "SKIPPED"
+        screen.status_label = "Scenario: SUCCESS"
+
+        # switch to different scenario
+        screen.on_scenario_selected("Rebuild")
+
+        assert screen._current_scenario is scenario_b
+        assert screen.status_label == "Ready"
+        # all new cards must be initial (PENDING), not completed/skipped — handle Kivy mock defaults
+        for card in screen._action_cards:
+            # fresh card should not retain stale SUCCESS/FAILED/SKIPPED
+            assert card.action_state not in ("SUCCESS", "FAILED", "SKIPPED")
+            # is_completed/is_skipped should not be True (fresh MagicMock or False is OK, True is not)
+            assert card.is_completed is not True
+            assert card.is_skipped is not True
+            if hasattr(card, "patch_states") and isinstance(card.patch_states, dict):
+                for v in card.patch_states.values():
+                    assert v not in ("SUCCESS", "FAILED")
+
+    def test_switch_clears_skip_states(self, screen):
+        from src.models.action import Action
+        from src.models.scenario import Scenario
+
+        s1 = Scenario(name="A", action_sequence=[Action.CLEAN, Action.BUILD])
+        s2 = Scenario(name="B", action_sequence=[Action.BUILD, Action.RUN])
+        screen.chain_container = MagicMock()
+        screen._active_profile = MagicMock()
+        screen._active_profile.patches = []
+        screen._scenarios = [s1, s2]
+        screen.is_running = False
+        screen._build_action_chain(s1, preserve_state=False)
+        screen._action_cards[0].is_skipped = True
+        screen._action_cards[1].is_skipped = True
+        screen.status_label = "Scenario: Failed"
+
+        screen.on_scenario_selected("B")
+
+        for card in screen._action_cards:
+            assert card.is_skipped is not True
+
+    def test_switch_during_running_does_not_reset_status_label(self, screen):
+        from src.models.action import Action
+        from src.models.scenario import Scenario
+
+        s1 = Scenario(name="A", action_sequence=[Action.CLEAN])
+        s2 = Scenario(name="B", action_sequence=[Action.BUILD])
+        screen.chain_container = MagicMock()
+        screen._active_profile = MagicMock()
+        screen._active_profile.patches = []
+        screen._scenarios = [s1, s2]
+        screen.is_running = True
+        screen.status_label = "Running: A"
+        screen._current_scenario = s1
+        screen._build_action_chain(s1, preserve_state=False)
+
+        screen.on_scenario_selected("B")
+
+        # still running — label must not be clobbered to Ready
+        assert screen.status_label == "Running: A"
+        # cards still reset (new chain is PENDING) — check not stale
+        for card in screen._action_cards:
+            assert card.action_state not in ("SUCCESS", "FAILED")
+
+
+class TestScenarioSwitchPlaceholder:
+    """3.2 — placeholder clears chain and resets label."""
+
+    def test_select_scenario_clears_and_resets(self, screen):
+        from src.models.action import Action
+        from src.models.scenario import Scenario
+
+        s = Scenario(name="Rebuild", action_sequence=[Action.BUILD])
+        screen.chain_container = MagicMock()
+        screen._active_profile = MagicMock()
+        screen._active_profile.patches = []
+        screen._scenarios = [s]
+        screen.is_running = False
+        screen._build_action_chain(s)
+        screen._current_scenario = s
+        screen.status_label = "Scenario: Failed"
+
+        screen.on_scenario_selected("Select scenario")
+
+        assert screen._current_scenario is None
+        screen.chain_container.clear_widgets.assert_called()
+        assert screen._action_cards == []
+        assert screen.status_label == "Ready"
+
+    def test_empty_text_clears_and_resets(self, screen):
+        from src.models.action import Action
+        from src.models.scenario import Scenario
+
+        s = Scenario(name="X", action_sequence=[Action.CLEAN])
+        screen.chain_container = MagicMock()
+        screen._active_profile = MagicMock()
+        screen._active_profile.patches = []
+        screen._scenarios = [s]
+        screen.is_running = False
+        screen._build_action_chain(s)
+        screen._current_scenario = s
+        screen.status_label = "Scenario: SUCCESS"
+
+        screen.on_scenario_selected("")
+
+        assert screen._current_scenario is None
+        assert screen.status_label == "Ready"
+        assert screen._action_cards == []
+
+    def test_placeholder_when_running_does_not_reset_label(self, screen):
+        from src.models.action import Action
+        from src.models.scenario import Scenario
+
+        s = Scenario(name="X", action_sequence=[Action.CLEAN])
+        screen.chain_container = MagicMock()
+        screen._scenarios = [s]
+        screen._current_scenario = s
+        screen._build_action_chain(s)
+        screen.is_running = True
+        screen.status_label = "Running: X"
+
+        screen.on_scenario_selected("Select scenario")
+
+        assert screen.status_label == "Running: X"
+
+
+class TestScenarioResizePreserves:
+    """3.3 — regression: resize preserves current scenario results."""
+
+    def test_refresh_preserves_success_and_running(self, screen):
+        from src.models.action import Action
+        from src.models.scenario import Scenario
+
+        s = Scenario(name="Rebuild", action_sequence=[Action.SYNC_SRC, Action.BUILD, Action.PULL_APK])
+        screen.chain_container = MagicMock()
+        screen._active_profile = MagicMock()
+        screen._active_profile.patches = []
+        screen._current_scenario = s
+        screen._build_action_chain(s, preserve_state=False)
+        screen._action_cards[0].action_state = "SUCCESS"
+        screen._action_cards[0].is_completed = True
+        screen._action_cards[1].action_state = "RUNNING"
+        screen._action_cards[1].is_completed = False
+        screen._action_cards[2].is_skipped = True
+
+        screen._refresh_actions_layout()
+
+        assert screen._action_cards[0].action_state == "SUCCESS"
+        assert screen._action_cards[0].is_completed is True
+        assert screen._action_cards[1].action_state == "RUNNING"
+        assert screen._action_cards[2].is_skipped is True
+
+    def test_refresh_preserves_patch_states(self, screen):
+        from src.models.action import Action
+        from src.models.scenario import Scenario
+
+        # PATCH card needs profile with patches
+        profile = MagicMock()
+        profile.patches = ["p1", "p2"]
+        s = Scenario(name="WithPatch", action_sequence=[Action.PATCH])
+        screen.chain_container = MagicMock()
+        screen._active_profile = profile
+        screen._current_scenario = s
+        screen._build_action_chain(s, preserve_state=False)
+        # set patch state to SUCCESS
+        patch_card = screen._action_cards[0]
+        patch_card.patch_states = {"p1": "SUCCESS", "p2": "PENDING"}
+
+        screen._refresh_actions_layout()
+
+        assert screen._action_cards[0].patch_states["p1"] == "SUCCESS"
+
+    def test_build_with_preserve_false_does_not_preserve(self, screen):
+        from src.models.action import Action
+        from src.models.scenario import Scenario
+
+        s1 = Scenario(name="A", action_sequence=[Action.CLEAN, Action.BUILD])
+        s2 = Scenario(name="B", action_sequence=[Action.CLEAN, Action.BUILD])
+        screen.chain_container = MagicMock()
+        screen._active_profile = MagicMock()
+        screen._active_profile.patches = []
+        screen._current_scenario = s1
+        screen._build_action_chain(s1, preserve_state=False)
+        screen._action_cards[0].action_state = "SUCCESS"
+        screen._action_cards[0].is_completed = True
+
+        screen._build_action_chain(s2, preserve_state=False)
+
+        # with preserve False, fresh card should not retain SUCCESS/True
+        assert screen._action_cards[0].action_state != "SUCCESS"
+        assert screen._action_cards[0].is_completed is not True
+
+
+class TestScenarioSwitchGuards:
+    """3.4 — placeholder/empty and missing custom-action early return."""
+
+    def test_empty_and_placeholder_do_not_build(self, screen):
+        screen.chain_container = MagicMock()
+        screen._scenarios = []
+        with patch.object(screen, "_build_action_chain") as mock_build:
+            screen.on_scenario_selected("")
+            mock_build.assert_not_called()
+            screen.on_scenario_selected("Select scenario")
+            mock_build.assert_not_called()
+
+    def test_missing_custom_action_does_not_change_scenario_or_build(self, screen):
+        scenario = MagicMock()
+        scenario.name = "needs-missing"
+        scenario.custom_action_names = {0: "missing-action"}
+        scenario.action_sequence = []
+        screen._scenarios = [scenario]
+        screen._current_scenario = None
+        screen.chain_container = MagicMock()
+        with patch("src.screens.actions_screen.CustomActionStore") as mock_ca:
+            mock_ca.load_all.return_value = []
+            with patch("src.screens.actions_screen.show_error_dialog"):
+                with patch.object(screen, "_build_action_chain") as mock_build:
+                    screen.on_scenario_selected("needs-missing")
+                    mock_build.assert_not_called()
+                    assert screen._current_scenario is None
+
+    def test_nonexistent_scenario_does_nothing(self, screen):
+        screen._scenarios = []
+        screen._current_scenario = None
+        screen.status_label = "Ready"
+        with patch.object(screen, "_build_action_chain") as mock_build:
+            screen.on_scenario_selected("ghost")
+            mock_build.assert_not_called()
+            assert screen._current_scenario is None
+            assert screen.status_label == "Ready"
